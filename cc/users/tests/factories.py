@@ -1,10 +1,19 @@
 from __future__ import annotations
 
+import string
+from datetime import timedelta
+
+from django.utils import timezone
 from factory import Faker
+from factory import LazyFunction
+from factory import SubFactory
 from factory import post_generation
 from factory.django import DjangoModelFactory
 
+from cc.users.models import EmailToken
 from cc.users.models import User
+
+_TOKEN_LETTERS = string.ascii_uppercase + string.digits
 
 
 class UserFactory(DjangoModelFactory[User]):
@@ -33,3 +42,13 @@ class UserFactory(DjangoModelFactory[User]):
         model = User
         django_get_or_create = ["email"]
         skip_postgeneration_save = True
+
+
+class EmailTokenFactory(DjangoModelFactory[EmailToken]):
+    user = SubFactory(UserFactory)
+    token = Faker("lexify", text="??????", letters=_TOKEN_LETTERS)
+    expires_at = LazyFunction(lambda: timezone.now() + timedelta(minutes=20))
+    is_used = False
+
+    class Meta:
+        model = EmailToken
