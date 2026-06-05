@@ -274,3 +274,4 @@ cc/media/
 .pytest_cache/
 .agents/
 .claude/
+Plans/
