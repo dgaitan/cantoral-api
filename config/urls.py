@@ -29,6 +29,8 @@ urlpatterns = [
     path("api/auth/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/auth/token/verify/", TokenVerifyView.as_view(), name="token_verify"),
+    # Songs
+    path("api/v1/", include("cc.songs.api.urls")),
     # Profile
     path("api/v1/profile", ProfileView.as_view(), name="profile"),
     # API docs (admin-only)

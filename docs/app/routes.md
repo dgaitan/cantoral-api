@@ -260,3 +260,20 @@ Response: {
     ...
 }
 ```
+
+### Transport Song Chords
+
+This is used to transport a song from a chord to another one.
+
+```
+POST - /api/v1/songs/{id}/transport - public
+Payload: {
+    "transport": "semi_tone" // it can be "tone" or "semi_tone".
+    "current_tone": "F" // the current tone (this is not the original tone stored, is the current one after the latest transport)
+    "original_tone": "G" // original tone.
+}
+Response: {
+    "data": "...Song Payload with the chords transported...",
+    ....
+}
+```
