@@ -17,25 +17,32 @@ from cc.songs.api.serializers import SongSerializer
 from cc.songs.api.serializers import TagSerializer
 from cc.songs.api.serializers import TagWriteSerializer
 from cc.songs.api.serializers import TransportSerializer
+from cc.songs.filters import AuthorFTSFilter
+from cc.songs.filters import SongFTSFilter
+from cc.songs.filters import TagFTSFilter
 from cc.songs.lyrics.transport import ChordTransposer
 from cc.songs.models import Author
 from cc.songs.models import Song
 from cc.songs.models import Tag
 from cc.songs.services import CreateSongService
 from cc.songs.services import PublishSongService
+from cc.utils.pagination import ApiPageNumberPagination
 from cc.utils.responses import ApiResponse
 from cc.utils.views import PublicReadCrudViewSet
 
 if TYPE_CHECKING:
     from rest_framework.request import Request
+    from rest_framework.response import Response
 
 
 class SongViewSet(GenericViewSet):
-    queryset = Song.objects.prefetch_related("tags", "authors").all()
+    queryset = Song.objects.prefetch_related("tags", "authors").order_by("-created_at")
     permission_classes = [IsAuthenticated]
+    pagination_class = ApiPageNumberPagination
+    filter_backends = [SongFTSFilter]
 
     def get_permissions(self):  # type: ignore[override]
-        if self.action == "retrieve":
+        if self.action in ("retrieve", "list"):
             return [AllowAny()]
         if self.action == "create":
             return [CanCreateSongs()]
@@ -44,6 +51,15 @@ class SongViewSet(GenericViewSet):
         if self.action == "transport":
             return [AllowAny()]
         return super().get_permissions()
+
+    def list(self, request: Request) -> ApiResponse | Response:
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = SongSerializer(page, many=True, context={"request": request})
+            return self.get_paginated_response(serializer.data)
+        serializer = SongSerializer(queryset, many=True, context={"request": request})
+        return ApiResponse(data=serializer.data, status=status.HTTP_200_OK)
 
     def retrieve(self, request: Request, pk: str | None = None) -> ApiResponse:
         song = self.get_object()
@@ -110,30 +126,40 @@ class SongViewSet(GenericViewSet):
 
 
 class AuthorViewSet(PublicReadCrudViewSet):
-    queryset = Author.objects.all()
+    queryset = Author.objects.order_by("id")
     read_serializer_class = AuthorSerializer
     write_serializer_class = AuthorWriteSerializer
     read_actions = ("list", "retrieve", "songs")
+    filter_backends = [AuthorFTSFilter]
 
     @action(detail=True, methods=["get"])
-    def songs(self, request: Request, pk: str | None = None) -> ApiResponse:
+    def songs(self, request: Request, pk: str | None = None) -> ApiResponse | Response:
         author = self.get_object()
-        ctx = {"request": request}
-        serializer = SongSerializer(author.songs.all(), many=True, context=ctx)
+        qs = author.songs.prefetch_related("tags", "authors").order_by("-created_at")
+        page = self.paginate_queryset(qs)
+        if page is not None:
+            serializer = SongSerializer(page, many=True, context={"request": request})
+            return self.get_paginated_response(serializer.data)
+        serializer = SongSerializer(qs, many=True, context={"request": request})
         return ApiResponse(data=serializer.data, status=status.HTTP_200_OK)
 
 
 class TagViewSet(PublicReadCrudViewSet):
-    queryset = Tag.objects.all()
+    queryset = Tag.objects.order_by("id")
     read_serializer_class = TagSerializer
     write_serializer_class = TagWriteSerializer
     read_actions = ("list", "retrieve", "songs", "children")
+    filter_backends = [TagFTSFilter]
 
     @action(detail=True, methods=["get"])
-    def songs(self, request: Request, pk: str | None = None) -> ApiResponse:
+    def songs(self, request: Request, pk: str | None = None) -> ApiResponse | Response:
         tag = self.get_object()
-        ctx = {"request": request}
-        serializer = SongSerializer(tag.songs.all(), many=True, context=ctx)
+        qs = tag.songs.prefetch_related("tags", "authors").order_by("-created_at")
+        page = self.paginate_queryset(qs)
+        if page is not None:
+            serializer = SongSerializer(page, many=True, context={"request": request})
+            return self.get_paginated_response(serializer.data)
+        serializer = SongSerializer(qs, many=True, context={"request": request})
         return ApiResponse(data=serializer.data, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["get"])

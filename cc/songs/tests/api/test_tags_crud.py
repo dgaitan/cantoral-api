@@ -24,9 +24,11 @@ class TestTagsCrud(AuthenticatedApiTest):
         assert response.status_code == HTTPStatus.OK
         assert response.data["success"] is True
         data = response.data["data"]
-        assert len(data) == 3
+        assert data["count"] == 3
+        results = data["results"]
+        assert len(results) == 3
         for field in ("id", "name", "slug", "parent_id"):
-            assert field in data[0]
+            assert field in results[0]
 
     def test_list_tags_is_publicly_accessible(self) -> None:
         response = APIClient().get(reverse("tag-list"))
@@ -37,7 +39,7 @@ class TestTagsCrud(AuthenticatedApiTest):
         TagFactory.create_batch(2, parent=parent)
         response = APIClient().get(reverse("tag-list"))
         assert response.status_code == HTTPStatus.OK
-        for tag in response.data["data"]:
+        for tag in response.data["data"]["results"]:
             assert "children" not in tag
 
     # ── Retrieve ──────────────────────────────────────────────────────────────
@@ -159,14 +161,15 @@ class TestTagsCrud(AuthenticatedApiTest):
         response = APIClient().get(reverse("tag-songs", kwargs={"pk": tag.pk}))
         assert response.status_code == HTTPStatus.OK
         data = response.data["data"]
-        assert len(data) == 2
-        assert all("id" in s and "name" in s for s in data)
+        results = data["results"]
+        assert len(results) == 2
+        assert all("id" in s and "name" in s for s in results)
 
     def test_retrieve_tag_songs_empty_list_when_no_songs(self) -> None:
         tag = TagFactory.create()
         response = APIClient().get(reverse("tag-songs", kwargs={"pk": tag.pk}))
         assert response.status_code == HTTPStatus.OK
-        assert response.data["data"] == []
+        assert response.data["data"]["results"] == []
 
     def test_retrieve_songs_for_non_existent_tag_returns_404(self) -> None:
         response = APIClient().get(reverse("tag-songs", kwargs={"pk": 99999}))

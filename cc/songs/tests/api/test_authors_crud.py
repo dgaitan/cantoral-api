@@ -25,10 +25,11 @@ class TestAuthorsCrud(AuthenticatedApiTest):
         assert response.status_code == HTTPStatus.OK
         assert response.data["success"] is True
         data = response.data["data"]
-        assert len(data) == 3
-        first = data[0]
+        assert data["count"] == 3
+        results = data["results"]
+        assert len(results) == 3
         for field in ("id", "name", "image", "bio", "slug"):
-            assert field in first
+            assert field in results[0]
 
     def test_list_authors_is_publicly_accessible(self) -> None:
         response = APIClient().get(reverse("author-list"))
@@ -123,14 +124,15 @@ class TestAuthorsCrud(AuthenticatedApiTest):
         response = APIClient().get(reverse("author-songs", kwargs={"pk": author.pk}))
         assert response.status_code == HTTPStatus.OK
         data = response.data["data"]
-        assert len(data) == 2
-        assert all("id" in s and "name" in s for s in data)
+        results = data["results"]
+        assert len(results) == 2
+        assert all("id" in s and "name" in s for s in results)
 
     def test_retrieve_author_songs_empty_list_when_no_songs(self) -> None:
         author = AuthorFactory.create()
         response = APIClient().get(reverse("author-songs", kwargs={"pk": author.pk}))
         assert response.status_code == HTTPStatus.OK
-        assert response.data["data"] == []
+        assert response.data["data"]["results"] == []
 
     def test_retrieve_songs_for_non_existent_author_returns_404(self) -> None:
         response = APIClient().get(reverse("author-songs", kwargs={"pk": 99999}))
