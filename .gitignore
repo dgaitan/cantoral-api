@@ -278,3 +278,4 @@ Plans/
 .specs
 .docs
 docs/reports
+*.sql
