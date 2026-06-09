@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from django.utils.text import slugify
 from rest_framework import serializers
 
 from cc.songs.lyrics.parser import VALID_TONES
@@ -18,7 +19,26 @@ class TagSerializer(serializers.ModelSerializer[Tag]):
 class AuthorSerializer(serializers.ModelSerializer[Author]):
     class Meta:
         model = Author
-        fields = ["id", "name"]
+        fields = ["id", "name", "image", "bio", "slug"]
+
+
+class AuthorWriteSerializer(serializers.ModelSerializer[Author]):
+    slug = serializers.SlugField(required=False, allow_blank=True, default="")
+
+    class Meta:
+        model = Author
+        fields = ["name", "image", "bio", "slug"]
+
+    def validate(self, data: dict) -> dict:
+        if not self.partial:
+            if not data.get("slug"):
+                name = data.get("name") or (self.instance.name if self.instance else "")
+                data["slug"] = slugify(name)
+        else:
+            if "slug" in data and not data["slug"]:
+                name = data.get("name") or (self.instance.name if self.instance else "")
+                data["slug"] = slugify(name)
+        return data
 
 
 class SongSerializer(serializers.ModelSerializer[Song]):

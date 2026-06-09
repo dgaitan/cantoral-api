@@ -13,6 +13,9 @@ class Tag(models.Model):
 
 class Author(models.Model):
     name = models.CharField(max_length=255)
+    image = models.URLField(blank=True, default="")
+    bio = models.TextField(blank=True, default="")
+    slug = models.SlugField(unique=False, blank=True)
 
     def __str__(self) -> str:
         return self.name

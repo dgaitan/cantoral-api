@@ -38,6 +38,9 @@ class TagFactory(DjangoModelFactory[Tag]):
 
 class AuthorFactory(DjangoModelFactory[Author]):
     name = Faker("name")
+    image = ""
+    bio = ""
+    slug = ""
 
     class Meta:
         model = Author
