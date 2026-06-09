@@ -6,26 +6,38 @@ from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
-from cc.songs.api.permissions import CanCreateSongs
-from cc.songs.api.permissions import CanPublishSongs
-from cc.songs.api.serializers import AuthorSerializer
-from cc.songs.api.serializers import AuthorWriteSerializer
-from cc.songs.api.serializers import CreateSongSerializer
-from cc.songs.api.serializers import SongSerializer
-from cc.songs.api.serializers import TagSerializer
-from cc.songs.api.serializers import TagWriteSerializer
-from cc.songs.api.serializers import TransportSerializer
-from cc.songs.filters import AuthorFTSFilter
-from cc.songs.filters import SongFTSFilter
-from cc.songs.filters import TagFTSFilter
+from cc.songs.api.permissions import (
+    CanCreateSongs,
+    CanPublishSongs,
+)
+from cc.songs.api.serializers import (
+    AuthorSerializer,
+    AuthorWriteSerializer,
+    SongSerializer,
+    SongWriteSerializer,
+    TagSerializer,
+    TagWriteSerializer,
+    TransportSerializer,
+)
+from cc.songs.filters import (
+    AuthorFTSFilter,
+    SongFTSFilter,
+    TagFTSFilter,
+)
 from cc.songs.lyrics.transport import ChordTransposer
-from cc.songs.models import Author
-from cc.songs.models import Song
-from cc.songs.models import Tag
-from cc.songs.services import CreateSongService
-from cc.songs.services import PublishSongService
+from cc.songs.models import (
+    Author,
+    Song,
+    Tag,
+)
+from cc.songs.services import (
+    CreateSongService,
+    PublishSongService,
+    UpdateSongService,
+)
 from cc.utils.pagination import ApiPageNumberPagination
 from cc.utils.responses import ApiResponse
 from cc.utils.views import PublicReadCrudViewSet
@@ -44,7 +56,7 @@ class SongViewSet(GenericViewSet):
     def get_permissions(self):  # type: ignore[override]
         if self.action in ("retrieve", "list"):
             return [AllowAny()]
-        if self.action == "create":
+        if self.action in ("create", "update", "partial_update", "destroy"):
             return [CanCreateSongs()]
         if self.action == "publish":
             return [CanPublishSongs()]
@@ -67,7 +79,7 @@ class SongViewSet(GenericViewSet):
         return ApiResponse(data=serializer.data, status=status.HTTP_200_OK)
 
     def create(self, request: Request) -> ApiResponse:
-        serializer = CreateSongSerializer(data=request.data)
+        serializer = SongWriteSerializer(data=request.data)
         if not serializer.is_valid():
             return ApiResponse(
                 errors=serializer.errors,
@@ -92,6 +104,66 @@ class SongViewSet(GenericViewSet):
             data=SongSerializer(song, context={"request": request}).data,
             status=status.HTTP_201_CREATED,
         )
+
+    def update(self, request: Request, pk: str | None = None) -> ApiResponse:
+        song = self.get_object()
+        serializer = SongWriteSerializer(data=request.data)
+        if not serializer.is_valid():
+            return ApiResponse(
+                errors=serializer.errors,
+                success=False,
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            song = UpdateSongService(
+                song=song,
+                name=serializer.validated_data["name"],
+                authors_ids=serializer.validated_data["authors"],
+                tags_ids=serializer.validated_data["tags"],
+                lyrics=serializer.validated_data["lyrics"],
+            ).dispatch()
+        except ValueError as exc:
+            return ApiResponse(
+                errors=[str(exc)],
+                success=False,
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return ApiResponse(
+            data=SongSerializer(song, context={"request": request}).data,
+            status=status.HTTP_200_OK,
+        )
+
+    def partial_update(self, request: Request, pk: str | None = None) -> ApiResponse:
+        song = self.get_object()
+        serializer = SongWriteSerializer(data=request.data, partial=True)
+        if not serializer.is_valid():
+            return ApiResponse(
+                errors=serializer.errors,
+                success=False,
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            song = UpdateSongService(
+                song=song,
+                name=serializer.validated_data.get("name"),
+                authors_ids=serializer.validated_data.get("authors"),
+                tags_ids=serializer.validated_data.get("tags"),
+                lyrics=serializer.validated_data.get("lyrics"),
+            ).dispatch()
+        except ValueError as exc:
+            return ApiResponse(
+                errors=[str(exc)],
+                success=False,
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return ApiResponse(
+            data=SongSerializer(song, context={"request": request}).data,
+            status=status.HTTP_200_OK,
+        )
+
+    def destroy(self, request: Request, pk: str | None = None) -> Response:
+        self.get_object().delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=["post"])
     def publish(self, request: Request, pk: str | None = None) -> ApiResponse:

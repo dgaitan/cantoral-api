@@ -40,7 +40,7 @@ Cantad alegres al Señor
 """
 
 
-class TestSongImprovements:
+class TestElementFilters:
     def test_list_songs_returns_paginated_envelope(self) -> None:
         SongFactory.create_batch(25)
         client = APIClient()

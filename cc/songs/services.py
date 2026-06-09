@@ -45,6 +45,41 @@ class CreateSongService:
         return song
 
 
+class UpdateSongService:
+    def __init__(
+        self,
+        song: Song,
+        name: str | None,
+        authors_ids: list[int] | None,
+        tags_ids: list[int] | None,
+        lyrics: str | None,
+    ) -> None:
+        self.song = song
+        self.name = name
+        self.authors_ids = authors_ids
+        self.tags_ids = tags_ids
+        self.lyrics = lyrics
+
+    @transaction.atomic
+    def dispatch(self) -> Song:
+        dirty = False
+        if self.name is not None:
+            self.song.name = self.name
+            dirty = True
+        if self.lyrics is not None:
+            parsed = LyricsParser(self.lyrics).parse()
+            self.song.plain_lyrics = self.lyrics
+            self.song.tone = parsed["tone"]
+            dirty = True
+        if dirty:
+            self.song.save()
+        if self.authors_ids is not None:
+            self.song.authors.set(Author.objects.filter(pk__in=self.authors_ids))
+        if self.tags_ids is not None:
+            self.song.tags.set(Tag.objects.filter(pk__in=self.tags_ids))
+        return self.song
+
+
 class PublishSongService:
     def __init__(self, song: Song) -> None:
         self.song = song

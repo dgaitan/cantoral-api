@@ -309,6 +309,67 @@ Create a new song.
 
 ---
 
+### PUT /api/v1/songs/{id}/
+
+Full update of a song. Replaces all mutable fields; omitting `tags` clears the tag list.
+
+**Auth required:** Yes — requires `can_create_songs` permission
+
+**Request body:**
+```json
+{
+  "name": "Song Title",
+  "authors": [1, 2],
+  "tags": [3],
+  "lyrics": "---\ntone: G\n---\n[verse]\n..."
+}
+```
+
+- `authors` — required, array of existing author IDs (at least one)
+- `tags` — optional; defaults to `[]` if omitted, which clears all tags
+- `lyrics` — must be valid song format; `tone` is re-derived from the frontmatter
+
+**Response 200:** Updated song object.
+
+**Response 400:** Validation error (invalid lyrics, unknown IDs).  
+**Response 401:** Not authenticated.  
+**Response 403:** Missing `can_create_songs` permission.  
+**Response 404:** Song not found.
+
+---
+
+### PATCH /api/v1/songs/{id}/
+
+Partial update of a song. Only the fields present in the request body are changed.
+
+**Auth required:** Yes — requires `can_create_songs` permission
+
+**Request body:** Any subset of `name`, `authors`, `tags`, `lyrics`.
+
+- `authors` — if provided, replaces the current author list (at least one required)
+- `tags` — if provided, replaces the current tag list (`[]` clears all tags); omitting the key leaves tags unchanged
+- `lyrics` — if provided, `tone` is re-derived from the updated frontmatter
+
+**Response 200:** Updated song object.
+
+**Response 400 / 401 / 403 / 404:** Same as PUT.
+
+---
+
+### DELETE /api/v1/songs/{id}/
+
+Delete a song.
+
+**Auth required:** Yes — requires `can_create_songs` permission
+
+**Response 204:** No content.
+
+**Response 401:** Not authenticated.  
+**Response 403:** Missing `can_create_songs` permission.  
+**Response 404:** Song not found.
+
+---
+
 ### POST /api/v1/songs/{id}/publish/
 
 Publish a song (sets `is_public = true`).

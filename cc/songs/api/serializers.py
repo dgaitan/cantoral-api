@@ -83,7 +83,7 @@ class SongSerializer(serializers.ModelSerializer[Song]):
         return {"lyric": parsed["lyric"], "chords": parsed["chords"]}
 
 
-class CreateSongSerializer(serializers.Serializer):
+class SongWriteSerializer(serializers.Serializer):
     name = serializers.CharField(min_length=1, max_length=255)
     authors = serializers.ListField(child=serializers.IntegerField(), min_length=1)
     tags = serializers.ListField(
@@ -105,6 +105,19 @@ class CreateSongSerializer(serializers.Serializer):
             msg = f"Authors with ids {missing} do not exist."
             raise serializers.ValidationError(msg)
         return value
+
+    def validate_tags(self, value: list[int]) -> list[int]:
+        if not value:
+            return value
+        existing = set(Tag.objects.filter(pk__in=value).values_list("pk", flat=True))
+        missing = [pk for pk in value if pk not in existing]
+        if missing:
+            msg = f"Tags with ids {missing} do not exist."
+            raise serializers.ValidationError(msg)
+        return value
+
+
+CreateSongSerializer = SongWriteSerializer
 
 
 class TransportSerializer(serializers.Serializer):
