@@ -6,7 +6,6 @@ from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
 from cc.songs.api.permissions import CanCreateSongs
@@ -15,13 +14,17 @@ from cc.songs.api.serializers import AuthorSerializer
 from cc.songs.api.serializers import AuthorWriteSerializer
 from cc.songs.api.serializers import CreateSongSerializer
 from cc.songs.api.serializers import SongSerializer
+from cc.songs.api.serializers import TagSerializer
+from cc.songs.api.serializers import TagWriteSerializer
 from cc.songs.api.serializers import TransportSerializer
 from cc.songs.lyrics.transport import ChordTransposer
 from cc.songs.models import Author
 from cc.songs.models import Song
+from cc.songs.models import Tag
 from cc.songs.services import CreateSongService
 from cc.songs.services import PublishSongService
 from cc.utils.responses import ApiResponse
+from cc.utils.views import PublicReadCrudViewSet
 
 if TYPE_CHECKING:
     from rest_framework.request import Request
@@ -106,70 +109,35 @@ class SongViewSet(GenericViewSet):
         return ApiResponse(data=song_data, status=status.HTTP_200_OK)
 
 
-class AuthorViewSet(GenericViewSet):
+class AuthorViewSet(PublicReadCrudViewSet):
     queryset = Author.objects.all()
-
-    def get_permissions(self):  # type: ignore[override]
-        if self.action in ("list", "retrieve", "songs"):
-            return [AllowAny()]
-        return [CanCreateSongs()]
-
-    def list(self, request: Request) -> ApiResponse:
-        authors = self.get_queryset()
-        serializer = AuthorSerializer(authors, many=True)
-        return ApiResponse(data=serializer.data, status=status.HTTP_200_OK)
-
-    def retrieve(self, request: Request, pk: str | None = None) -> ApiResponse:
-        author = self.get_object()
-        serializer = AuthorSerializer(author)
-        return ApiResponse(data=serializer.data, status=status.HTTP_200_OK)
-
-    def create(self, request: Request) -> ApiResponse:
-        serializer = AuthorWriteSerializer(data=request.data)
-        if not serializer.is_valid():
-            return ApiResponse(
-                errors=serializer.errors,
-                success=False,
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        author = serializer.save()
-        return ApiResponse(
-            data=AuthorSerializer(author).data,
-            status=status.HTTP_201_CREATED,
-        )
-
-    def update(self, request: Request, pk: str | None = None) -> ApiResponse:
-        author = self.get_object()
-        serializer = AuthorWriteSerializer(author, data=request.data)
-        if not serializer.is_valid():
-            return ApiResponse(
-                errors=serializer.errors,
-                success=False,
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        author = serializer.save()
-        return ApiResponse(data=AuthorSerializer(author).data, status=status.HTTP_200_OK)
-
-    def partial_update(self, request: Request, pk: str | None = None) -> ApiResponse:
-        author = self.get_object()
-        serializer = AuthorWriteSerializer(author, data=request.data, partial=True)
-        if not serializer.is_valid():
-            return ApiResponse(
-                errors=serializer.errors,
-                success=False,
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        author = serializer.save()
-        return ApiResponse(data=AuthorSerializer(author).data, status=status.HTTP_200_OK)
-
-    def destroy(self, request: Request, pk: str | None = None) -> Response:
-        author = self.get_object()
-        author.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+    read_serializer_class = AuthorSerializer
+    write_serializer_class = AuthorWriteSerializer
+    read_actions = ("list", "retrieve", "songs")
 
     @action(detail=True, methods=["get"])
     def songs(self, request: Request, pk: str | None = None) -> ApiResponse:
         author = self.get_object()
-        qs = author.songs.all()
-        serializer = SongSerializer(qs, many=True, context={"request": request})
+        ctx = {"request": request}
+        serializer = SongSerializer(author.songs.all(), many=True, context=ctx)
+        return ApiResponse(data=serializer.data, status=status.HTTP_200_OK)
+
+
+class TagViewSet(PublicReadCrudViewSet):
+    queryset = Tag.objects.all()
+    read_serializer_class = TagSerializer
+    write_serializer_class = TagWriteSerializer
+    read_actions = ("list", "retrieve", "songs", "children")
+
+    @action(detail=True, methods=["get"])
+    def songs(self, request: Request, pk: str | None = None) -> ApiResponse:
+        tag = self.get_object()
+        ctx = {"request": request}
+        serializer = SongSerializer(tag.songs.all(), many=True, context=ctx)
+        return ApiResponse(data=serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["get"])
+    def children(self, request: Request, pk: str | None = None) -> ApiResponse:
+        tag = self.get_object()
+        serializer = TagSerializer(tag.children.all(), many=True)
         return ApiResponse(data=serializer.data, status=status.HTTP_200_OK)

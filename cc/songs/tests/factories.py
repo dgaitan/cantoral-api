@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from factory import Faker
+from factory import LazyAttribute
 from factory import LazyFunction
+from factory import Sequence
 from factory import SubFactory
 from factory.django import DjangoModelFactory
+from django.utils.text import slugify
 
 from cc.songs.models import Author
 from cc.songs.models import Song
@@ -29,11 +32,12 @@ Sacerdote para siempre quiero ser
 
 
 class TagFactory(DjangoModelFactory[Tag]):
-    name = Faker("word")
+    name = Sequence(lambda n: f"tag-{n}")
+    slug = LazyAttribute(lambda obj: slugify(obj.name))
+    parent = None
 
     class Meta:
         model = Tag
-        django_get_or_create = ["name"]
 
 
 class AuthorFactory(DjangoModelFactory[Author]):

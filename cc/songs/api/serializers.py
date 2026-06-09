@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from django.utils.text import slugify
 from rest_framework import serializers
 
 from cc.songs.lyrics.parser import VALID_TONES
@@ -8,12 +7,38 @@ from cc.songs.lyrics.parser import LyricsParser
 from cc.songs.models import Author
 from cc.songs.models import Song
 from cc.songs.models import Tag
+from cc.utils.mixins import SlugAutoGenerateMixin
 
 
 class TagSerializer(serializers.ModelSerializer[Tag]):
     class Meta:
         model = Tag
-        fields = ["id", "name"]
+        fields = ["id", "name", "slug", "parent_id"]
+
+
+class TagWriteSerializer(SlugAutoGenerateMixin, serializers.ModelSerializer[Tag]):
+    slug = serializers.SlugField(required=False, allow_blank=True, default="")
+    parent_id = serializers.PrimaryKeyRelatedField(
+        queryset=Tag.objects.all(),
+        source="parent",
+        allow_null=True,
+        required=False,
+    )
+
+    class Meta:
+        model = Tag
+        fields = ["name", "slug", "parent_id"]
+
+    def validate(self, data: dict) -> dict:
+        data = super().validate(data)
+        slug = data.get("slug")
+        if slug:
+            qs = Tag.objects.filter(slug=slug)
+            if self.instance:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise serializers.ValidationError({"slug": "Tag with this slug already exists."})
+        return data
 
 
 class AuthorSerializer(serializers.ModelSerializer[Author]):
@@ -22,23 +47,12 @@ class AuthorSerializer(serializers.ModelSerializer[Author]):
         fields = ["id", "name", "image", "bio", "slug"]
 
 
-class AuthorWriteSerializer(serializers.ModelSerializer[Author]):
+class AuthorWriteSerializer(SlugAutoGenerateMixin, serializers.ModelSerializer[Author]):
     slug = serializers.SlugField(required=False, allow_blank=True, default="")
 
     class Meta:
         model = Author
         fields = ["name", "image", "bio", "slug"]
-
-    def validate(self, data: dict) -> dict:
-        if not self.partial:
-            if not data.get("slug"):
-                name = data.get("name") or (self.instance.name if self.instance else "")
-                data["slug"] = slugify(name)
-        else:
-            if "slug" in data and not data["slug"]:
-                name = data.get("name") or (self.instance.name if self.instance else "")
-                data["slug"] = slugify(name)
-        return data
 
 
 class SongSerializer(serializers.ModelSerializer[Song]):
