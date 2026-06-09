@@ -322,3 +322,28 @@ class TestImportSongsService:
         assert stats["songs"] == 1
         assert stats["skipped"] == 1
         assert Song.objects.count() == 1
+
+    def test_import_imports_slug_from_dump(self, sql_file_no_verses, admin_user):
+        _svc(sql_file_no_verses, admin_user.email).dispatch()
+        assert Song.objects.get(name="Song One").slug == "song-one"
+        assert Song.objects.get(name="Song Two").slug == "song-two"
+
+    def test_import_falls_back_to_slugified_name_when_slug_null(self, tmp_path, admin_user):
+        # Row with \N (NULL) in the slug column — importer must derive from name.
+        row = (
+            r"\N" + "\t1\t2024-01-01\t2024-01-01\tt\tf\tMy Test Song\t"
+            r"\N" + "\t"
+            r"\N" + "\t"
+            r'[{"type":"verse","data":{"content":"<p>Hello</p>"}}]'
+            "\t" + r"\N\t\N\t\N\t\N\t\N\t\N\t\N\t\N\t0\t0\t0\t\N\t\N\t\N"
+        )
+        songs_block = (
+            f"COPY public.songs ({_SONGS_COLS}) FROM stdin;\n"
+            f"{row}\n" + r"\."
+        )
+        sql = f"{songs_block}\n{_AUTHORS_BLOCK}\n{_CATEGORIES_BLOCK}\n"
+        sql += f"{_AUTHORS_SONGS_BLOCK}\n{_CATEGORIES_SONGS_BLOCK}"
+        f = tmp_path / "null_slug.sql"
+        f.write_text(sql)
+        _svc(str(f), admin_user.email).dispatch()
+        assert Song.objects.get(name="My Test Song").slug == "my-test-song"

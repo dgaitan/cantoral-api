@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from django.db import transaction
+from django.utils.text import slugify
 
 from cc.songs.models import Author
 from cc.songs.models import Song
@@ -306,8 +307,11 @@ class ImportSongsService:
                 skipped += 1
                 continue
 
+            song_name = row["name"] or ""
+            song_slug = row.get("slug") or slugify(song_name)
             song = Song.objects.create(
-                name=row["name"] or "",
+                name=song_name,
+                slug=song_slug,
                 plain_lyrics=plain_lyrics,
                 tone=self.default_tone,
                 is_public=row.get("is_public") == "t",

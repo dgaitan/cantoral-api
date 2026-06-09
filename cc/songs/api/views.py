@@ -90,6 +90,7 @@ class SongViewSet(GenericViewSet):
             song = CreateSongService(
                 user=request.user,
                 name=serializer.validated_data["name"],
+                slug=serializer.validated_data.get("slug", ""),
                 authors_ids=serializer.validated_data["authors"],
                 tags_ids=serializer.validated_data["tags"],
                 lyrics=serializer.validated_data["lyrics"],
@@ -107,7 +108,9 @@ class SongViewSet(GenericViewSet):
 
     def update(self, request: Request, pk: str | None = None) -> ApiResponse:
         song = self.get_object()
-        serializer = SongWriteSerializer(data=request.data)
+        serializer = SongWriteSerializer(
+            data=request.data, context={"song_instance": song},
+        )
         if not serializer.is_valid():
             return ApiResponse(
                 errors=serializer.errors,
@@ -118,6 +121,7 @@ class SongViewSet(GenericViewSet):
             song = UpdateSongService(
                 song=song,
                 name=serializer.validated_data["name"],
+                slug=serializer.validated_data.get("slug") or None,
                 authors_ids=serializer.validated_data["authors"],
                 tags_ids=serializer.validated_data["tags"],
                 lyrics=serializer.validated_data["lyrics"],
@@ -135,7 +139,9 @@ class SongViewSet(GenericViewSet):
 
     def partial_update(self, request: Request, pk: str | None = None) -> ApiResponse:
         song = self.get_object()
-        serializer = SongWriteSerializer(data=request.data, partial=True)
+        serializer = SongWriteSerializer(
+            data=request.data, partial=True, context={"song_instance": song},
+        )
         if not serializer.is_valid():
             return ApiResponse(
                 errors=serializer.errors,
@@ -146,6 +152,7 @@ class SongViewSet(GenericViewSet):
             song = UpdateSongService(
                 song=song,
                 name=serializer.validated_data.get("name"),
+                slug=serializer.validated_data.get("slug") or None,
                 authors_ids=serializer.validated_data.get("authors"),
                 tags_ids=serializer.validated_data.get("tags"),
                 lyrics=serializer.validated_data.get("lyrics"),

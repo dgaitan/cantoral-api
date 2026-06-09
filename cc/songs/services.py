@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from django.db import transaction
+from django.utils.text import slugify
 
 from cc.songs.lyrics.parser import LyricsParser
 from cc.songs.models import Author
@@ -21,9 +22,11 @@ class CreateSongService:
         authors_ids: list[int],
         tags_ids: list[int],
         lyrics: str,
+        slug: str = "",
     ) -> None:
         self.user = user
         self.name = name
+        self.slug = slug
         self.authors_ids = authors_ids
         self.tags_ids = tags_ids
         self.lyrics = lyrics
@@ -33,6 +36,7 @@ class CreateSongService:
         parsed = LyricsParser(self.lyrics).parse()
         song = Song.objects.create(
             name=self.name,
+            slug=self.slug or slugify(self.name),
             plain_lyrics=self.lyrics,
             tone=parsed["tone"],
             is_public=False,
@@ -53,9 +57,11 @@ class UpdateSongService:
         authors_ids: list[int] | None,
         tags_ids: list[int] | None,
         lyrics: str | None,
+        slug: str | None = None,
     ) -> None:
         self.song = song
         self.name = name
+        self.slug = slug
         self.authors_ids = authors_ids
         self.tags_ids = tags_ids
         self.lyrics = lyrics
@@ -65,6 +71,9 @@ class UpdateSongService:
         dirty = False
         if self.name is not None:
             self.song.name = self.name
+            dirty = True
+        if self.slug is not None:
+            self.song.slug = self.slug
             dirty = True
         if self.lyrics is not None:
             parsed = LyricsParser(self.lyrics).parse()

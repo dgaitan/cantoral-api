@@ -17,7 +17,7 @@ class TagSerializer(serializers.ModelSerializer[Tag]):
 
 
 class TagWriteSerializer(SlugAutoGenerateMixin, serializers.ModelSerializer[Tag]):
-    slug = serializers.SlugField(required=False, allow_blank=True, default="")
+    slug = serializers.SlugField(required=False, allow_blank=True, default="", max_length=255)
     parent_id = serializers.PrimaryKeyRelatedField(
         queryset=Tag.objects.all(),
         source="parent",
@@ -48,7 +48,7 @@ class AuthorSerializer(serializers.ModelSerializer[Author]):
 
 
 class AuthorWriteSerializer(SlugAutoGenerateMixin, serializers.ModelSerializer[Author]):
-    slug = serializers.SlugField(required=False, allow_blank=True, default="")
+    slug = serializers.SlugField(required=False, allow_blank=True, default="", max_length=255)
 
     class Meta:
         model = Author
@@ -64,6 +64,7 @@ class SongSerializer(serializers.ModelSerializer[Song]):
         model = Song
         fields = [
             "id",
+            "slug",
             "name",
             "views",
             "tags",
@@ -83,8 +84,9 @@ class SongSerializer(serializers.ModelSerializer[Song]):
         return {"lyric": parsed["lyric"], "chords": parsed["chords"]}
 
 
-class SongWriteSerializer(serializers.Serializer):
+class SongWriteSerializer(SlugAutoGenerateMixin, serializers.Serializer):
     name = serializers.CharField(min_length=1, max_length=255)
+    slug = serializers.SlugField(required=False, allow_blank=True, default="", max_length=255)
     authors = serializers.ListField(child=serializers.IntegerField(), min_length=1)
     tags = serializers.ListField(
         child=serializers.IntegerField(), required=False, default=list,

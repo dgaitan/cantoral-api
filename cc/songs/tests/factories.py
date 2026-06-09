@@ -52,6 +52,7 @@ class AuthorFactory(DjangoModelFactory[Author]):
 
 class SongFactory(DjangoModelFactory[Song]):
     name = Faker("sentence", nb_words=4)
+    slug = Sequence(lambda n: f"song-{n}")
     plain_lyrics = LazyFunction(lambda: _PLAIN_LYRICS)
     tone = "G"
     is_public = False
