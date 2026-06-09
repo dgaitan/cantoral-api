@@ -38,9 +38,8 @@ class RegisterUserSerializer(serializers.Serializer):
     def validate_email(self, value: str) -> str:
         value = value.lower()
         if User.objects.filter(email=value).exists():
-            raise serializers.ValidationError(
-                "An account with this email already exists. Please log in instead."
-            )
+            msg = "An account with this email already exists. Please log in instead."
+            raise serializers.ValidationError(msg)
         return value
 
 
@@ -50,7 +49,8 @@ class LoginUserSerializer(serializers.Serializer):
 
     def validate_email(self, value: str) -> str:
         if not User.objects.filter(email=value).exists():
-            raise serializers.ValidationError("Invalid email or password.")
+            msg = "Invalid email or password."
+            raise serializers.ValidationError(msg)
         return value
 
 
@@ -60,7 +60,8 @@ class VerifyEmailTokenSerializer(serializers.Serializer):
 
     def validate_email(self, value: str) -> str:
         if not User.objects.filter(email=value).exists():
-            raise serializers.ValidationError("Invalid email. User does not exist.")
+            msg = "Invalid email. User does not exist."
+            raise serializers.ValidationError(msg)
         return value
 
 

@@ -275,3 +275,5 @@ cc/media/
 .agents/
 .claude/
 Plans/
+.specs
+.docs

@@ -123,6 +123,44 @@ def post(self, request: Request) -> ApiResponse:
     return ApiResponse(data=result, status=200)
 ```
 
+## Email classes
+
+Never call `send_mail()` directly. Every transactional email is a class in `cc/<app>/emails.py` that extends `BaseEmail`:
+
+```python
+from cc.utils.emails import BaseEmail
+
+class WelcomeMail(BaseEmail):
+    subject = "Welcome!"
+    template_name = "users/emails/welcome"  # no extension
+
+    def __init__(self, to: str, name: str) -> None:
+        super().__init__(to=to, name=name)
+```
+
+Two template files are required per email: `<template_name>.html` and `<template_name>.txt`, placed under `cc/<app>/templates/`.
+
+Call `.send()` only from inside `transaction.on_commit(lambda: ...)` in a service so the email fires only after the DB transaction commits.
+
+## Celery
+
+All external I/O (email, webhooks, slow operations) must be a Celery task — never inline in a view or service.
+
+- Tasks live in `cc/<app>/tasks.py` and use `@shared_task`.
+- Always trigger via `transaction.on_commit(lambda: my_task.delay(...))` inside a `@transaction.atomic` service.
+- The generic `send_email_task` in `cc/utils/tasks.py` handles all email sending — use `BaseEmail` subclasses instead of calling it directly.
+- In tests, `CELERY_TASK_ALWAYS_EAGER = True` makes tasks run synchronously.
+
+## Rate limiting
+
+Auth endpoints (`RegisterView`, `LoginView`, `VerifyEmailTokenView`) must declare `throttle_classes = [AuthRateThrottle]`. The `auth` scope allows 10 requests/minute. General API throttling (100/hour anon, 1000/hour user) is applied globally via DRF settings.
+
+## Content-Type
+
+`JSONContentTypeMiddleware` enforces `Content-Type: application/json` on all `POST`/`PUT`/`PATCH` requests to `/api/`. Returns HTTP 415. No per-view checks needed.
+
+> Full architecture reference: `docs/app/architecture.md`
+
 ## Code conventions
 
 - **Typed Python** everywhere: all models, serializers, views, and utilities must be fully annotated. `mypy` enforces this with `django-stubs` + `drf-stubs`.

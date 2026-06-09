@@ -17,6 +17,7 @@ from cc.users.services import LoginUserService
 from cc.users.services import RegisterUserService
 from cc.users.services import VerifyEmailTokenService
 from cc.utils.responses import ApiResponse
+from cc.utils.throttles import AuthRateThrottle
 
 if TYPE_CHECKING:
     from rest_framework.request import Request
@@ -24,6 +25,7 @@ if TYPE_CHECKING:
 
 class RegisterView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [AuthRateThrottle]
 
     def post(self, request: Request) -> ApiResponse:
         serializer = RegisterUserSerializer(data=request.data)
@@ -46,6 +48,7 @@ class RegisterView(APIView):
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [AuthRateThrottle]
 
     def post(self, request: Request) -> ApiResponse:
         serializer = LoginUserSerializer(data=request.data)
@@ -60,13 +63,14 @@ class LoginView(APIView):
             password=serializer.validated_data["password"],
         ).dispatch()
         return ApiResponse(
-            message="If your credentials are correct, check your email inbox for a login code.",
+            message="If credentials are correct, check your email for a login code.",
             status=status.HTTP_200_OK,
         )
 
 
 class VerifyEmailTokenView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [AuthRateThrottle]
 
     def post(self, request: Request) -> ApiResponse:
         serializer = VerifyEmailTokenSerializer(data=request.data)

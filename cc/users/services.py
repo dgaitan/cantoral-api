@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 from django.contrib.auth import authenticate
 from django.db import transaction
 
+from cc.users.emails import EmailTokenMail
 from cc.users.models import User
 from cc.users.tokens import create_email_token
-from cc.users.tokens import send_email_token
 from cc.users.tokens import verify_email_token
 
 
@@ -22,7 +24,10 @@ class RegisterUserService:
             is_active=False,
         )
         email_token = create_email_token(user)
-        send_email_token(user, email_token.token)
+        _token = email_token.token
+        transaction.on_commit(
+            lambda: EmailTokenMail(to=user.email, token=_token, name=user.name).send(),
+        )
         return user
 
 
@@ -37,7 +42,10 @@ class LoginUserService:
         if user is None or not user.is_active:
             return
         email_token = create_email_token(user)
-        send_email_token(user, email_token.token)
+        _token = email_token.token
+        transaction.on_commit(
+            lambda: EmailTokenMail(to=user.email, token=_token, name=user.name).send(),
+        )
 
 
 class VerifyEmailTokenService:

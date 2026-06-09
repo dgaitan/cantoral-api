@@ -4,7 +4,6 @@ import secrets
 import string
 from datetime import timedelta
 
-from django.core.mail import send_mail
 from django.utils import timezone
 
 from cc.users.models import EmailToken
@@ -33,15 +32,3 @@ def verify_email_token(user: User, token: str) -> EmailToken | None:
         is_used=False,
         expires_at__gt=timezone.now(),
     ).first()
-
-
-def send_email_token(user: User, token: str) -> None:
-    send_mail(
-        subject="Your login code",
-        message=(
-            f"Your login code is: {token}\n\n"
-            f"It expires in {TOKEN_TTL_MINUTES} minutes."
-        ),
-        from_email=None,  # uses DEFAULT_FROM_EMAIL
-        recipient_list=[user.email],
-    )

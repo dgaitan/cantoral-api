@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Any
 
 from rest_framework.response import Response
-from rest_framework.serializers import Serializer
 
 
 class ApiResponse(Response):
@@ -22,4 +21,4 @@ class ApiResponse(Response):
             "errors": errors or [],
             "success": success,
         }
-        super().__init__(data=envelope, status=status, **kwargs)        
+        super().__init__(data=envelope, status=status, **kwargs)

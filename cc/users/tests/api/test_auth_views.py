@@ -21,6 +21,7 @@ _TEST_PASSWORD = "StrongTestPass1!"  # noqa: S105
 
 
 class TestRegister:
+    @pytest.mark.django_db(transaction=True)
     def test_creates_inactive_user_and_sends_email(self) -> None:
         client = APIClient()
         response = client.post(
@@ -64,6 +65,7 @@ class TestRegister:
 
 
 class TestLogin:
+    @pytest.mark.django_db(transaction=True)
     def test_valid_credentials_sends_email_token(self) -> None:
         user = UserFactory.create(password=_TEST_PASSWORD, is_active=True)
         client = APIClient()

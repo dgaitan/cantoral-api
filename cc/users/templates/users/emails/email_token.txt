@@ -1,0 +1,10 @@
+Hi {{ name }},
+
+Use the code below to verify your identity. It expires in 20 minutes.
+
+  {{ token }}
+
+If you did not request this code, you can safely ignore this email.
+
+---
+Cantoral Católico — do not reply to this email.
