@@ -48,3 +48,22 @@ class Song(models.Model):
 
     def __str__(self) -> str:
         return self.name
+
+
+class Verse(models.Model):
+    SECTION_CHOICES = [
+        ("verse", "Verse"),
+        ("chorus", "Chorus"),
+        ("bridge", "Bridge"),
+    ]
+    song = models.ForeignKey(Song, related_name="verses", on_delete=models.CASCADE)
+    type = models.CharField(max_length=10, choices=SECTION_CHOICES)
+    order = models.PositiveIntegerField()
+    lyrics_html = models.TextField()
+    chords_html = models.TextField()
+
+    class Meta:
+        ordering = ["order"]
+
+    def __str__(self) -> str:
+        return f"{self.song.name} — {self.type} #{self.order}"

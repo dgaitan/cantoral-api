@@ -1,16 +1,19 @@
 from __future__ import annotations
 
+from django.utils.text import slugify
 from factory import Faker
 from factory import LazyAttribute
 from factory import LazyFunction
 from factory import Sequence
 from factory import SubFactory
+from factory import post_generation
 from factory.django import DjangoModelFactory
-from django.utils.text import slugify
 
+from cc.songs.lyrics.parser import LyricsParser
 from cc.songs.models import Author
 from cc.songs.models import Song
 from cc.songs.models import Tag
+from cc.songs.services import sync_song_verses
 from cc.users.tests.factories import UserFactory
 
 _PLAIN_LYRICS = """\
@@ -60,3 +63,14 @@ class SongFactory(DjangoModelFactory[Song]):
 
     class Meta:
         model = Song
+        skip_postgeneration_save = True
+
+    @post_generation
+    def _verses(self, create: bool, extracted: object, **kwargs: object) -> None:  # noqa: FBT001
+        if not create:
+            return
+        try:
+            parsed = LyricsParser(self.plain_lyrics).parse()
+            sync_song_verses(self, parsed)
+        except ValueError:
+            pass

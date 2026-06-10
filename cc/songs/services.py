@@ -9,6 +9,7 @@ from cc.songs.lyrics.parser import LyricsParser
 from cc.songs.models import Author
 from cc.songs.models import Song
 from cc.songs.models import Tag
+from cc.songs.models import Verse
 
 if TYPE_CHECKING:
     from cc.users.models import User
@@ -46,6 +47,7 @@ class CreateSongService:
             song.authors.set(Author.objects.filter(pk__in=self.authors_ids))
         if self.tags_ids:
             song.tags.set(Tag.objects.filter(pk__in=self.tags_ids))
+        sync_song_verses(song, parsed)
         return song
 
 
@@ -68,6 +70,7 @@ class UpdateSongService:
 
     @transaction.atomic
     def dispatch(self) -> Song:
+        parsed = None
         dirty = False
         if self.name is not None:
             self.song.name = self.name
@@ -86,7 +89,27 @@ class UpdateSongService:
             self.song.authors.set(Author.objects.filter(pk__in=self.authors_ids))
         if self.tags_ids is not None:
             self.song.tags.set(Tag.objects.filter(pk__in=self.tags_ids))
+        if parsed is not None:
+            sync_song_verses(self.song, parsed)
         return self.song
+
+
+def sync_song_verses(song: Song, parsed: dict) -> None:
+    song.verses.all().delete()
+    verses = [
+        Verse(
+            song=song,
+            type=lyric_section["type"],
+            order=i,
+            lyrics_html=lyric_section["content"],
+            chords_html=chord_section["content"],
+        )
+        for i, (lyric_section, chord_section) in enumerate(
+            zip(parsed["lyric"], parsed["chords"], strict=True),
+        )
+    ]
+    if verses:
+        Verse.objects.bulk_create(verses)
 
 
 class PublishSongService:

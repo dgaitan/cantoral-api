@@ -67,6 +67,18 @@ class TestGetSong:
         assert any(t["id"] == tag.pk for t in data["tags"])
         assert any(a["id"] == author.pk for a in data["authors"])
 
+    def test_lyrics_content_is_html_wrapped(self) -> None:
+        song = SongFactory.create()
+        client = APIClient()
+        response = client.get(reverse("song-detail", kwargs={"pk": song.pk}))
+        data = response.data["data"]
+        lyric_content = data["lyrics"]["lyric"][0]["content"]
+        chords_content = data["lyrics"]["chords"][0]["content"]
+        assert "<p>" in lyric_content
+        assert "\n" not in lyric_content
+        assert "<p>" in chords_content
+        assert "\n" not in chords_content
+
 
 class TestCreateSong:
     def _client_for(self, user):  # type: ignore[no-untyped-def]

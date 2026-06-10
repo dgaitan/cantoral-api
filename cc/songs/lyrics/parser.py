@@ -11,6 +11,7 @@ _FRONTMATTER_RE = re.compile(r"^\s*---\s*\n(.*?)\n\s*---\s*\n?", re.DOTALL)
 _SECTION_RE = re.compile(r"\[(verse|chorus|bridge)\]", re.IGNORECASE)
 _CHORD_LINE_RE = re.compile(r"^\s*(\{[^}]+\}\s*)+$")
 _CHORD_TOKEN_RE = re.compile(r"\{([^}]+)\}")
+_CODE_FENCE_RE = re.compile(r"^\s*`{3,}\s*$")
 
 
 def _parse_frontmatter(text: str) -> tuple[dict[str, str], str]:
@@ -31,7 +32,9 @@ def _parse_frontmatter(text: str) -> tuple[dict[str, str], str]:
 def _chord_token_to_display(match: re.Match[str]) -> str:
     inner = match.group(1)
     parts = [p.strip() for p in inner.split(",")]
-    return "  ".join(parts)
+    display = "  ".join(parts)
+    # Pad to original token width so subsequent chords on the same line stay aligned
+    return display.ljust(len(match.group(0)))
 
 
 def _strip_chords_from_line(line: str) -> str:
@@ -39,11 +42,15 @@ def _strip_chords_from_line(line: str) -> str:
 
 
 def _render_chords_in_line(line: str) -> str:
-    return _CHORD_TOKEN_RE.sub(_chord_token_to_display, line)
+    return _CHORD_TOKEN_RE.sub(_chord_token_to_display, line).rstrip()
 
 
 def _is_chord_only_line(line: str) -> bool:
     return bool(_CHORD_LINE_RE.match(line)) and bool(line.strip())
+
+
+def _is_code_fence_line(line: str) -> bool:
+    return bool(_CODE_FENCE_RE.match(line))
 
 
 def _split_into_sections(body: str) -> list[tuple[str, str]]:
@@ -59,18 +66,25 @@ def _split_into_sections(body: str) -> list[tuple[str, str]]:
 
 
 def _build_lyric_content(raw: str) -> str:
-    lines = []
+    parts = []
     for line in raw.splitlines():
-        if _is_chord_only_line(line):
+        if _is_chord_only_line(line) or _is_code_fence_line(line):
             continue
-        stripped = _strip_chords_from_line(line)
-        lines.append(stripped)
-    return "\n".join(lines).strip()
+        stripped = _strip_chords_from_line(line).strip()
+        if stripped:
+            parts.append(f"<p>{stripped}</p>")
+    return "".join(parts)
 
 
 def _build_chords_content(raw: str) -> str:
-    lines = [_render_chords_in_line(line) for line in raw.splitlines()]
-    return "\n".join(lines).strip()
+    parts = []
+    for line in raw.splitlines():
+        if _is_code_fence_line(line):
+            continue
+        rendered = _render_chords_in_line(line)
+        if rendered.strip():
+            parts.append(f"<p>{rendered}</p>")
+    return "".join(parts)
 
 
 class LyricsParser:

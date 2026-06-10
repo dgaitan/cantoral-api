@@ -79,6 +79,53 @@ class TestLyricsParser:
         result = LyricsParser(lyrics).parse()
         assert result["lyric"][0]["type"] == "bridge"
 
+    def test_lyric_content_is_html_wrapped(self) -> None:
+        result = LyricsParser(_SAMPLE).parse()
+        content = result["lyric"][0]["content"]
+        assert content.startswith("<p>")
+        assert content.endswith("</p>")
+        assert "\n" not in content
+
+    def test_chords_content_is_html_wrapped(self) -> None:
+        result = LyricsParser(_SAMPLE).parse()
+        content = result["chords"][0]["content"]
+        assert content.startswith("<p>")
+        assert content.endswith("</p>")
+        assert "\n" not in content
+
+    def test_code_fence_stripped_from_lyric(self) -> None:
+        lyrics = "---\ntone: G\n---\n[verse]\nLine one\n```\n"
+        result = LyricsParser(lyrics).parse()
+        assert "```" not in result["lyric"][0]["content"]
+
+    def test_code_fence_stripped_from_chords(self) -> None:
+        lyrics = "---\ntone: G\n---\n[verse]\n{G}\nLine one\n```\n"
+        result = LyricsParser(lyrics).parse()
+        assert "```" not in result["chords"][0]["content"]
+
+    def test_empty_lines_not_wrapped(self) -> None:
+        lyrics = "---\ntone: G\n---\n[verse]\nLine one\n\nLine two\n"
+        result = LyricsParser(lyrics).parse()
+        assert "<p></p>" not in result["lyric"][0]["content"]
+
+    def test_chord_token_replacement_is_width_preserving(self) -> None:
+        # {G} is 3 chars; after replacement G should be padded to 3 so D stays at col 5
+        lyrics = "---\ntone: G\n---\n[verse]\n{G}  {D}\nLine\n"
+        result = LyricsParser(lyrics).parse()
+        chords_html = result["chords"][0]["content"]
+        # Extract the rendered chord line (content of first <p>)
+        chord_line = chords_html.split("</p>")[0].replace("<p>", "")
+        assert chord_line[0] == "G"
+        assert chord_line[5] == "D"  # {G}(3) + 2 spaces = D at col 5
+
+    def test_leading_spaces_preserved_on_chord_lines(self) -> None:
+        lyrics = "---\ntone: G\n---\n[verse]\n     {G}   {D}\nLine\n"
+        result = LyricsParser(lyrics).parse()
+        chords_html = result["chords"][0]["content"]
+        chord_line = chords_html.split("</p>")[0].replace("<p>", "")
+        assert chord_line.startswith("     ")  # 5-space indent preserved
+        assert chord_line[5] == "G"
+
 
 class TestChordTransposer:
     def test_no_change_when_offset_is_zero(self) -> None:

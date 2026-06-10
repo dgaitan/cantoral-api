@@ -76,12 +76,18 @@ class SongSerializer(serializers.ModelSerializer[Song]):
         ]
 
     def get_lyrics(self, obj: Song) -> dict:
-        plain = self.context.get("override_plain_lyrics", obj.plain_lyrics)
-        try:
-            parsed = LyricsParser(plain).parse()
-        except ValueError:
-            return {"lyric": [], "chords": []}
-        return {"lyric": parsed["lyric"], "chords": parsed["chords"]}
+        plain = self.context.get("override_plain_lyrics")
+        if plain:
+            try:
+                parsed = LyricsParser(plain).parse()
+            except ValueError:
+                return {"lyric": [], "chords": []}
+            return {"lyric": parsed["lyric"], "chords": parsed["chords"]}
+        verses = obj.verses.all()
+        return {
+            "lyric": [{"type": v.type, "content": v.lyrics_html} for v in verses],
+            "chords": [{"type": v.type, "content": v.chords_html} for v in verses],
+        }
 
 
 class SongWriteSerializer(SlugAutoGenerateMixin, serializers.Serializer):
