@@ -28,7 +28,7 @@ All list endpoints return a paginated envelope inside `data`:
 
 **Page size:** 20 items per page. Use `?page=N` to navigate.
 
-**Search:** All list endpoints accept `?search=<query>` for PostgreSQL full-text search. Search uses word-level tokenization — type full words for best results.
+**Search:** All list endpoints accept `?search=<query>`. Songs use a mixed strategy: PostgreSQL full-text search on song name and lyrics (type full words for best results), and case-insensitive substring matching on author and tag names (partial words work). Authors and tags use full-text search on their own fields.
 
 ---
 
@@ -240,7 +240,11 @@ List all songs (paginated).
 
 **Query params:**
 - `?page=N` — page number (default: 1)
-- `?search=<query>` — full-text search across song name, lyrics, author names, and tag names
+- `?search=<query>` — PostgreSQL full-text search on song name and lyrics (requires full words); case-insensitive substring match on author names and tag names (partial words work)
+- `?author_id=<int>` — filter to songs that have the given author; returns 400 for non-integer values, empty list for unknown IDs
+- `?tag_id=<int>` — filter to songs that have the given tag; returns 400 for non-integer values, empty list for unknown IDs
+
+All params are optional and combinable — each active param narrows the result set (AND logic).
 
 **Response 200:**
 ```json
