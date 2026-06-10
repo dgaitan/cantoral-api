@@ -1,76 +1,75 @@
 name: CI
 
-# Enable Buildkit and let compose use it to speed up image building
-env:
-  DOCKER_BUILDKIT: 1
-  COMPOSE_DOCKER_CLI_BUILD: 1
-
 on:
   pull_request:
-    branches: ['main']
-    paths-ignore: ['docs/**']
-
-  push:
-    branches: ['main']
-    paths-ignore: ['docs/**']
+    branches: ["main"]
+    paths-ignore: ["docs/**"]
 
 concurrency:
   group: ${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
-  linter:
+  lint:
+    name: Ruff
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code Repository
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
+      - uses: astral-sh/setup-uv@v5
         with:
-          python-version-file: '.python-version'
-      # Consider using pre-commit.ci for open source project
-      - name: Run pre-commit
-        uses: pre-commit/action@v3.0.1
+          enable-cache: "true"
 
-  # With no caching at all the entire ci process takes 3m to complete!
-  pytest:
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: ".python-version"
+
+      - run: uv sync --locked
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Format
+        run: uv run ruff format --check .
+
+  test:
+    name: pytest
     runs-on: ubuntu-latest
 
     services:
       postgres:
-        image: postgres:18
+        image: postgres:17
         ports:
           - 5432:5432
         env:
           POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     env:
-      # postgres://user:password@host:port/database
-      DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/postgres'
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
 
     steps:
-      - name: Checkout Code Repository
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: "true"
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
+      - uses: actions/setup-python@v5
         with:
           python-version-file: ".python-version"
 
-      - name: Install dependencies
-        run: uv sync --locked
+      - run: uv sync --locked
 
-      - name: Check DB Migrations
+      - name: Check pending migrations
         run: uv run python manage.py makemigrations --check
 
-      - name: Run DB Migrations
+      - name: Run migrations
         run: uv run python manage.py migrate
 
-      - name: Test with pytest
-        run: uv run pytest
+      - name: Run tests
+        run: uv run pytest --tb=short
