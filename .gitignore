@@ -280,5 +280,5 @@ Plans/
 docs/reports
 *.sql
 
-.envs
+.envs/
 .env
