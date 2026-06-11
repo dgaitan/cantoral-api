@@ -1,0 +1,19 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+  <h1>Extract song from chord sheet image</h1>
+  <p>
+    Paste a public image URL (for example an S3 chord sheet). Claude vision will
+    extract the title, lyrics, and chords into a draft song for review.
+  </p>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <table>
+      {{ form.as_table }}
+    </table>
+    <div class="submit-row">
+      <input type="submit" value="Extract and create draft song" class="default">
+      <a href="{% url 'admin:songs_song_changelist' %}" class="button cancel-link">Cancel</a>
+    </div>
+  </form>
+{% endblock %}

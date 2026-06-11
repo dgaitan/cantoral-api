@@ -6,3 +6,4 @@ IPYTHONDIR=/app/.ipython
 # CORS
 # ------------------------------------------------------------------------------
 CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
+GEMINI_API_KEY="AIzaSyDkYFNfrvOXYnL1OSEh6eeCtIgTvu9c7_Q"

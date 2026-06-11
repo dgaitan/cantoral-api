@@ -1,19 +1,25 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from django import forms
-from django.contrib import admin
+from django.conf import settings as django_settings
+from django.contrib import admin, messages
+from django.shortcuts import redirect, render
+from django.urls import path, reverse
 from django.utils.safestring import mark_safe
 from django.utils.text import slugify
 
+from cc.songs.extraction import AGENT_CHOICES
 from cc.songs.lyrics.parser import LyricsParser
 from cc.songs.models import Author, Song, Tag, Verse
-from cc.songs.services import sync_song_verses
+from cc.songs.services import CreateSongFromImageService, sync_song_verses
 
 if TYPE_CHECKING:
-    from django.http import HttpRequest
+    from django.http import HttpRequest, HttpResponse
+
+    from cc.users.models import User
 
 
 class LyricsEditorWidget(forms.Textarea):
@@ -96,6 +102,28 @@ class SongAdminForm(forms.ModelForm):  # type: ignore[type-arg]
         return value
 
 
+class ExtractSongFromImageForm(forms.Form):
+    image_url = forms.URLField(
+        label="Image URL",
+        help_text="Public URL to a chord sheet image (JPEG, PNG, GIF, or WebP).",
+    )
+    name = forms.CharField(
+        label="Song name (optional)",
+        required=False,
+        max_length=255,
+        help_text="Override the title extracted from the image.",
+    )
+    agent = forms.ChoiceField(
+        label="Extraction agent",
+        choices=AGENT_CHOICES,
+        help_text="Vision model to use for chord-sheet extraction.",
+    )
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.fields["agent"].initial = django_settings.CHORD_EXTRACTION_DEFAULT_AGENT
+
+
 @admin.register(Tag)
 class TagAdmin(admin.ModelAdmin):  # type: ignore[type-arg]
     list_display = ["id", "name", "slug", "parent"]
@@ -113,12 +141,20 @@ class AuthorAdmin(admin.ModelAdmin):  # type: ignore[type-arg]
 @admin.register(Song)
 class SongAdmin(admin.ModelAdmin):  # type: ignore[type-arg]
     form = SongAdminForm
+    change_list_template = "admin/songs/song/change_list.html"
     inlines = [VerseInline]
     list_display = ["id", "name", "tone", "is_public", "created_by", "created_at"]
     list_filter = ["is_public", "tone"]
     search_fields = ["name"]
     autocomplete_fields = ["tags", "authors"]
-    readonly_fields = ["tone", "views", "created_by", "created_at", "updated_at"]
+    readonly_fields = [
+        "tone",
+        "views",
+        "source_image_url",
+        "created_by",
+        "created_at",
+        "updated_at",
+    ]
     prepopulated_fields = {"slug": ("name",)}
     fieldsets = [
         (
@@ -136,11 +172,61 @@ class SongAdmin(admin.ModelAdmin):  # type: ignore[type-arg]
         (
             "Metadata",
             {
-                "fields": ["tone", "views", "created_by", "created_at", "updated_at"],
+                "fields": [
+                    "tone",
+                    "source_image_url",
+                    "views",
+                    "created_by",
+                    "created_at",
+                    "updated_at",
+                ],
                 "classes": ["collapse"],
             },
         ),
     ]
+
+    def get_urls(self) -> list:
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                "extract-from-image/",
+                self.admin_site.admin_view(self.extract_from_image_view),
+                name="songs_song_extract_from_image",
+            ),
+        ]
+        return custom_urls + urls
+
+    def extract_from_image_view(self, request: HttpRequest) -> HttpResponse:
+        form = ExtractSongFromImageForm(request.POST or None)
+        if request.method == "POST" and form.is_valid():
+            try:
+                song = CreateSongFromImageService(
+                    user=cast("User", request.user),
+                    image_url=form.cleaned_data["image_url"],
+                    name=form.cleaned_data.get("name", ""),
+                    agent=form.cleaned_data["agent"],
+                ).dispatch()
+            except ValueError as exc:
+                messages.error(request, str(exc))
+            else:
+                messages.success(
+                    request,
+                    f'Draft song "{song.name}" was created from the image.',
+                )
+                return redirect(
+                    reverse("admin:songs_song_change", args=[song.pk]),
+                )
+        context = {
+            **self.admin_site.each_context(request),
+            "form": form,
+            "opts": self.opts,
+            "title": "Extract song from image",
+        }
+        return render(
+            request,
+            "admin/songs/song/extract_from_image.html",
+            context,
+        )
 
     def save_model(
         self,

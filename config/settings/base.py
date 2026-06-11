@@ -11,10 +11,8 @@ BASE_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
 APPS_DIR = BASE_DIR / "cc"
 env = environ.Env()
 
-READ_DOT_ENV_FILE = env.bool("DJANGO_READ_DOT_ENV_FILE", default=False)
-if READ_DOT_ENV_FILE:
-    # OS environment variables take precedence over variables from .env
-    env.read_env(str(BASE_DIR / ".env"))
+# OS environment variables take precedence over .env values (overwrite=False default)
+env.read_env(str(BASE_DIR / ".env"), overwrite=False)
 
 # GENERAL
 # ------------------------------------------------------------------------------
@@ -238,5 +236,13 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TIMEZONE = TIME_ZONE
+# Chord-sheet vision extraction
+# ------------------------------------------------------------------------------
+ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default="")
+ANTHROPIC_VISION_MODEL = env("ANTHROPIC_VISION_MODEL", default="claude-sonnet-4-5")
+GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
+GEMINI_VISION_MODEL = env("GEMINI_VISION_MODEL", default="gemini-3.5-flash")
+CHORD_EXTRACTION_DEFAULT_AGENT = env("CHORD_EXTRACTION_DEFAULT_AGENT", default="anthropic")
+
 # Your stuff...
 # ------------------------------------------------------------------------------

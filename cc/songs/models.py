@@ -36,6 +36,7 @@ class Song(models.Model):
     tags = models.ManyToManyField(Tag, blank=True, related_name="songs")
     authors = models.ManyToManyField(Author, blank=True, related_name="songs")
     plain_lyrics = models.TextField()
+    source_image_url = models.URLField(blank=True, default="")
     tone = models.CharField(max_length=10)
     is_public = models.BooleanField(default=False)
     created_by = models.ForeignKey(

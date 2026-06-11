@@ -2,10 +2,20 @@ from __future__ import annotations
 
 import re
 
-VALID_TONES = {
+_ENGLISH_TONES = {
     "C", "C#", "Db", "D", "D#", "Eb", "E", "F",
     "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B",
 }
+
+_SPANISH_MAJOR_TONES = {
+    "Do", "Do#", "Reb", "Re", "Re#", "Mib", "Mi", "Fa",
+    "Fa#", "Solb", "Sol", "Sol#", "Lab", "La", "La#", "Sib", "Si",
+}
+
+# Spanish minor chords are written with an "m" suffix (Mim, Lam, ...).
+_SPANISH_MINOR_TONES = {f"{tone}m" for tone in _SPANISH_MAJOR_TONES}
+
+VALID_TONES = _ENGLISH_TONES | _SPANISH_MAJOR_TONES | _SPANISH_MINOR_TONES
 
 _FRONTMATTER_RE = re.compile(r"^\s*---\s*\n(.*?)\n\s*---\s*\n?", re.DOTALL)
 _SECTION_RE = re.compile(r"\[(verse|chorus|bridge)\]", re.IGNORECASE)

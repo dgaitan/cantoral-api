@@ -2,21 +2,20 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from django.conf import settings
 from django.db import transaction
 from django.utils.text import slugify
 
+from cc.songs.extraction import ChordSheetExtractor, get_agent
 from cc.songs.lyrics.parser import LyricsParser
-from cc.songs.models import Author
-from cc.songs.models import Song
-from cc.songs.models import Tag
-from cc.songs.models import Verse
+from cc.songs.models import Author, Song, Tag, Verse
 
 if TYPE_CHECKING:
     from cc.users.models import User
 
 
 class CreateSongService:
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         user: User,
         name: str,
@@ -52,7 +51,7 @@ class CreateSongService:
 
 
 class UpdateSongService:
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         song: Song,
         name: str | None,
@@ -121,3 +120,38 @@ class PublishSongService:
         self.song.is_public = True
         self.song.save(update_fields=["is_public"])
         return self.song
+
+
+class CreateSongFromImageService:
+    def __init__(  # noqa: PLR0913
+        self,
+        user: User,
+        image_url: str,
+        name: str = "",
+        agent: str = "",
+        authors_ids: list[int] | None = None,
+        tags_ids: list[int] | None = None,
+    ) -> None:
+        self.user = user
+        self.image_url = image_url
+        self.name = name
+        self.agent = agent
+        self.authors_ids = authors_ids or []
+        self.tags_ids = tags_ids or []
+
+    @transaction.atomic
+    def dispatch(self) -> Song:
+        agent_name = self.agent or settings.CHORD_EXTRACTION_DEFAULT_AGENT
+        agent = get_agent(agent_name)
+        extracted = ChordSheetExtractor(self.image_url, agent).extract()
+        plain_lyrics = extracted["plain_lyrics"]
+        song = CreateSongService(
+            user=self.user,
+            name=self.name or extracted["name"],
+            authors_ids=self.authors_ids,
+            tags_ids=self.tags_ids,
+            lyrics=plain_lyrics,
+        ).dispatch()
+        song.source_image_url = self.image_url
+        song.save(update_fields=["source_image_url"])
+        return song
