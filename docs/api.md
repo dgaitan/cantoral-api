@@ -239,9 +239,9 @@ List the authenticated user's favorite songs (paginated).
 
 **Query params:**
 - `?page=N` — page number (default: 1)
-- `?name=<query>` — case-insensitive substring match on song name
-- `?author=<query>` — case-insensitive substring match on author name
-- `?tag=<query>` — case-insensitive substring match on tag name
+- `?search=<query>` — same as the songs list search: PostgreSQL full-text on name and lyrics, case-insensitive substring on author and tag names
+- `?author_id=<int>` — filter to favorites by a specific author; returns 400 for non-integer values, empty list for unknown IDs
+- `?tag_id=<int>` — filter to favorites with a specific tag; returns 400 for non-integer values, empty list for unknown IDs
 
 All params are optional and combinable (AND logic).
 

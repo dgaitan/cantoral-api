@@ -121,7 +121,7 @@ class TestListFavorites:
         assert data["count"] == 0
         assert data["results"] == []
 
-    def test_filter_by_song_name(self) -> None:
+    def test_filter_by_search(self) -> None:
         user = UserFactory.create(is_active=True)
         match = SongFactory.create(name="Pescador de Hombres")
         miss = SongFactory.create(name="Vienen con Alegria")
@@ -129,16 +129,16 @@ class TestListFavorites:
         Favorite.objects.create(user=user, song=miss)
         client = _auth_client(user)
 
-        response = client.get(reverse("profile-favorites"), {"name": "pescador"})
+        response = client.get(reverse("profile-favorites"), {"search": "Pescador"})
 
         assert response.status_code == HTTPStatus.OK
         data = response.data["data"]
         assert data["count"] == 1
         assert data["results"][0]["id"] == match.pk
 
-    def test_filter_by_author_name(self) -> None:
+    def test_filter_by_author_id(self) -> None:
         user = UserFactory.create(is_active=True)
-        author = AuthorFactory.create(name="Cesareo Gabarain")
+        author = AuthorFactory.create()
         match = SongFactory.create()
         match.authors.set([author])
         miss = SongFactory.create()
@@ -146,16 +146,16 @@ class TestListFavorites:
         Favorite.objects.create(user=user, song=miss)
         client = _auth_client(user)
 
-        response = client.get(reverse("profile-favorites"), {"author": "gabarain"})
+        response = client.get(reverse("profile-favorites"), {"author_id": author.pk})
 
         assert response.status_code == HTTPStatus.OK
         data = response.data["data"]
         assert data["count"] == 1
         assert data["results"][0]["id"] == match.pk
 
-    def test_filter_by_tag_name(self) -> None:
+    def test_filter_by_tag_id(self) -> None:
         user = UserFactory.create(is_active=True)
-        tag = TagFactory.create(name="Comunion")
+        tag = TagFactory.create()
         match = SongFactory.create()
         match.tags.set([tag])
         miss = SongFactory.create()
@@ -163,7 +163,7 @@ class TestListFavorites:
         Favorite.objects.create(user=user, song=miss)
         client = _auth_client(user)
 
-        response = client.get(reverse("profile-favorites"), {"tag": "comunion"})
+        response = client.get(reverse("profile-favorites"), {"tag_id": tag.pk})
 
         assert response.status_code == HTTPStatus.OK
         data = response.data["data"]
@@ -172,19 +172,35 @@ class TestListFavorites:
 
     def test_filter_with_no_match_returns_empty(self) -> None:
         user = UserFactory.create(is_active=True)
-        song = SongFactory.create(name="Pescador de Hombres")
+        song = SongFactory.create()
         Favorite.objects.create(user=user, song=song)
         client = _auth_client(user)
 
         response = client.get(
             reverse("profile-favorites"),
-            {"name": "no-such-song-anywhere"},
+            {"search": "xyznonexistent"},
         )
 
         assert response.status_code == HTTPStatus.OK
         data = response.data["data"]
         assert data["count"] == 0
         assert data["results"] == []
+
+    def test_filter_by_invalid_author_id_returns_400(self) -> None:
+        user = UserFactory.create(is_active=True)
+        client = _auth_client(user)
+
+        response = client.get(reverse("profile-favorites"), {"author_id": "abc"})
+
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+
+    def test_filter_by_invalid_tag_id_returns_400(self) -> None:
+        user = UserFactory.create(is_active=True)
+        client = _auth_client(user)
+
+        response = client.get(reverse("profile-favorites"), {"tag_id": "abc"})
+
+        assert response.status_code == HTTPStatus.BAD_REQUEST
 
     def test_list_without_authentication_returns_401(self) -> None:
         client = APIClient()

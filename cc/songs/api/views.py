@@ -30,18 +30,17 @@ from cc.songs.services import (
 from cc.utils.pagination import ApiPageNumberPagination
 from cc.utils.responses import ApiResponse
 from cc.utils.views import PublicReadCrudViewSet
+from cc.songs.queries import SongQuerySet
 
 if TYPE_CHECKING:
+    from django.db.models import QuerySet
     from rest_framework.request import Request
 
 
 class SongViewSet(GenericViewSet):
-    queryset = Song.objects.prefetch_related("tags", "authors", "verses").order_by(
-        "-created_at",
-    )
+    queryset = SongQuerySet().get_queryset()
     permission_classes = [IsAuthenticated]
     pagination_class = ApiPageNumberPagination
-    filter_backends = [SongFTSFilter]
 
     def get_permissions(self):  # type: ignore[override]
         if self.action in ("retrieve", "list"):
@@ -57,7 +56,10 @@ class SongViewSet(GenericViewSet):
         return super().get_permissions()
 
     def list(self, request: Request) -> ApiResponse | Response:
-        queryset = self.filter_queryset(self.get_queryset())
+        try:
+            queryset: QuerySet[Song] = SongQuerySet().with_filters(**request.query_params).get_queryset()
+        except ValueError as exc:
+            return ApiResponse(errors=[str(exc)], success=False, status=status.HTTP_400_BAD_REQUEST)
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = SongSerializer(page, many=True, context={"request": request})
@@ -212,9 +214,7 @@ class AuthorViewSet(PublicReadCrudViewSet):
     @action(detail=True, methods=["get"])
     def songs(self, request: Request, pk: str | None = None) -> ApiResponse | Response:
         author = self.get_object()
-        qs = author.songs.prefetch_related("tags", "authors", "verses").order_by(
-            "-created_at",
-        )
+        qs: QuerySet[Song] = SongQuerySet().with_filters(author_id=author.id).get_queryset()
         page = self.paginate_queryset(qs)
         if page is not None:
             serializer = SongSerializer(page, many=True, context={"request": request})
@@ -233,9 +233,7 @@ class TagViewSet(PublicReadCrudViewSet):
     @action(detail=True, methods=["get"])
     def songs(self, request: Request, pk: str | None = None) -> ApiResponse | Response:
         tag = self.get_object()
-        qs = tag.songs.prefetch_related("tags", "authors", "verses").order_by(
-            "-created_at",
-        )
+        qs: QuerySet[Song] = SongQuerySet().with_filters(tag_id=tag.id).get_queryset()
         page = self.paginate_queryset(qs)
         if page is not None:
             serializer = SongSerializer(page, many=True, context={"request": request})
