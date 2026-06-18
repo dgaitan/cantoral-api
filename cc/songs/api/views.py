@@ -21,23 +21,26 @@ from cc.songs.api.serializers import (
 from cc.songs.filters import AuthorFTSFilter, SongFTSFilter, TagFTSFilter
 from cc.songs.lyrics.transport import ChordTransposer
 from cc.songs.models import Author, Song, Tag
-from cc.songs.services import CreateSongService, PublishSongService, UpdateSongService
+from cc.songs.services import (
+    CreateSongService,
+    PublishSongService,
+    ToggleFavoriteService,
+    UpdateSongService,
+)
 from cc.utils.pagination import ApiPageNumberPagination
 from cc.utils.responses import ApiResponse
 from cc.utils.views import PublicReadCrudViewSet
+from cc.songs.queries import SongQuerySet
 
 if TYPE_CHECKING:
+    from django.db.models import QuerySet
     from rest_framework.request import Request
-    from rest_framework.response import Response
 
 
 class SongViewSet(GenericViewSet):
-    queryset = Song.objects.prefetch_related("tags", "authors", "verses").order_by(
-        "-created_at",
-    )
+    queryset = SongQuerySet().get_queryset()
     permission_classes = [IsAuthenticated]
     pagination_class = ApiPageNumberPagination
-    filter_backends = [SongFTSFilter]
 
     def get_permissions(self):  # type: ignore[override]
         if self.action in ("retrieve", "list"):
@@ -48,10 +51,15 @@ class SongViewSet(GenericViewSet):
             return [CanPublishSongs()]
         if self.action == "transport":
             return [AllowAny()]
+        if self.action == "favorites":
+            return [IsAuthenticated()]
         return super().get_permissions()
 
     def list(self, request: Request) -> ApiResponse | Response:
-        queryset = self.filter_queryset(self.get_queryset())
+        try:
+            queryset: QuerySet[Song] = SongQuerySet().with_filters(**request.query_params).get_queryset()
+        except ValueError as exc:
+            return ApiResponse(errors=[str(exc)], success=False, status=status.HTTP_400_BAD_REQUEST)
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = SongSerializer(page, many=True, context={"request": request})
@@ -168,6 +176,12 @@ class SongViewSet(GenericViewSet):
         )
 
     @action(detail=True, methods=["post"])
+    def favorites(self, request: Request, pk: str | None = None) -> ApiResponse:
+        song = self.get_object()
+        is_favorite = ToggleFavoriteService(user=request.user, song=song).dispatch()  # type: ignore[arg-type]
+        return ApiResponse(data={"is_favorite": is_favorite}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"])
     def transport(self, request: Request, pk: str | None = None) -> ApiResponse:
         song = self.get_object()
         serializer = TransportSerializer(data=request.data)
@@ -200,9 +214,7 @@ class AuthorViewSet(PublicReadCrudViewSet):
     @action(detail=True, methods=["get"])
     def songs(self, request: Request, pk: str | None = None) -> ApiResponse | Response:
         author = self.get_object()
-        qs = author.songs.prefetch_related("tags", "authors", "verses").order_by(
-            "-created_at",
-        )
+        qs: QuerySet[Song] = SongQuerySet().with_filters(author_id=author.id).get_queryset()
         page = self.paginate_queryset(qs)
         if page is not None:
             serializer = SongSerializer(page, many=True, context={"request": request})
@@ -221,9 +233,7 @@ class TagViewSet(PublicReadCrudViewSet):
     @action(detail=True, methods=["get"])
     def songs(self, request: Request, pk: str | None = None) -> ApiResponse | Response:
         tag = self.get_object()
-        qs = tag.songs.prefetch_related("tags", "authors", "verses").order_by(
-            "-created_at",
-        )
+        qs: QuerySet[Song] = SongQuerySet().with_filters(tag_id=tag.id).get_queryset()
         page = self.paginate_queryset(qs)
         if page is not None:
             serializer = SongSerializer(page, many=True, context={"request": request})
