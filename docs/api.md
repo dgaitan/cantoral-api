@@ -209,6 +209,61 @@ Update the authenticated user's profile (partial update supported).
 
 ---
 
+### POST /api/v1/songs/{id}/favorites/
+
+Toggle a song in the authenticated user's favorites. Adds the song if not already favorited; removes it if already favorited.
+
+**Auth required:** Yes
+
+**Response 200:**
+```json
+{
+  "success": true,
+  "data": { "is_favorite": true }
+}
+```
+
+- `is_favorite: true` — song was added to favorites
+- `is_favorite: false` — song was removed from favorites
+
+**Response 401:** Not authenticated.  
+**Response 404:** Song not found.
+
+---
+
+### GET /api/v1/profile/favorites/
+
+List the authenticated user's favorite songs (paginated).
+
+**Auth required:** Yes
+
+**Query params:**
+- `?page=N` — page number (default: 1)
+- `?name=<query>` — case-insensitive substring match on song name
+- `?author=<query>` — case-insensitive substring match on author name
+- `?tag=<query>` — case-insensitive substring match on tag name
+
+All params are optional and combinable (AND logic).
+
+**Response 200:**
+```json
+{
+  "success": true,
+  "data": {
+    "count": 5,
+    "next": null,
+    "previous": null,
+    "results": [{ ...song }, ...]
+  }
+}
+```
+
+Each song in `results` has the standard song shape (see Songs section).
+
+**Response 401:** Not authenticated.
+
+---
+
 ## Songs
 
 Song objects have the shape:

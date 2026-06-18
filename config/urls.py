@@ -1,18 +1,23 @@
 from django.conf import settings
 from django.contrib import admin
-from django.urls import include
-from django.urls import path
-from drf_spectacular.views import SpectacularAPIView
-from drf_spectacular.views import SpectacularSwaggerView
-from rest_framework_simplejwt.views import TokenObtainPairView
-from rest_framework_simplejwt.views import TokenRefreshView
-from rest_framework_simplejwt.views import TokenVerifyView
+from django.urls import include, path
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+    TokenVerifyView,
+)
 
-from cc.users.api.auth_views import LoginView
-from cc.users.api.auth_views import LogoutView
-from cc.users.api.auth_views import RegisterView
-from cc.users.api.auth_views import VerifyEmailTokenView
-from cc.users.api.profile_views import ProfileView
+from cc.users.api.auth_views import (
+    LoginView,
+    LogoutView,
+    RegisterView,
+    VerifyEmailTokenView,
+)
+from cc.users.api.profile_views import (
+    FavoriteSongsView,
+    ProfileView,
+)
 
 urlpatterns = [
     # Django Admin
@@ -32,6 +37,11 @@ urlpatterns = [
     # Songs
     path("api/v1/", include("cc.songs.api.urls")),
     # Profile
+    path(
+        "api/v1/profile/favorites/",
+        FavoriteSongsView.as_view(),
+        name="profile-favorites",
+    ),
     path("api/v1/profile", ProfileView.as_view(), name="profile"),
     # API docs (admin-only)
     path("api/schema/", SpectacularAPIView.as_view(), name="api-schema"),

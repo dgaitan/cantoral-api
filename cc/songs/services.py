@@ -8,7 +8,7 @@ from django.utils.text import slugify
 
 from cc.songs.extraction import ChordSheetExtractor, get_agent
 from cc.songs.lyrics.parser import LyricsParser
-from cc.songs.models import Author, Song, Tag, Verse
+from cc.songs.models import Author, Favorite, Song, Tag, Verse
 
 if TYPE_CHECKING:
     from cc.users.models import User
@@ -120,6 +120,22 @@ class PublishSongService:
         self.song.is_public = True
         self.song.save(update_fields=["is_public"])
         return self.song
+
+
+class ToggleFavoriteService:
+    def __init__(self, user: User, song: Song) -> None:
+        self.user = user
+        self.song = song
+
+    @transaction.atomic
+    def dispatch(self) -> bool:
+        favorite, created = Favorite.objects.get_or_create(
+            user=self.user, song=self.song,
+        )
+        if not created:
+            favorite.delete()
+            return False
+        return True
 
 
 class CreateSongFromImageService:

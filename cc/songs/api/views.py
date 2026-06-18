@@ -21,14 +21,18 @@ from cc.songs.api.serializers import (
 from cc.songs.filters import AuthorFTSFilter, SongFTSFilter, TagFTSFilter
 from cc.songs.lyrics.transport import ChordTransposer
 from cc.songs.models import Author, Song, Tag
-from cc.songs.services import CreateSongService, PublishSongService, UpdateSongService
+from cc.songs.services import (
+    CreateSongService,
+    PublishSongService,
+    ToggleFavoriteService,
+    UpdateSongService,
+)
 from cc.utils.pagination import ApiPageNumberPagination
 from cc.utils.responses import ApiResponse
 from cc.utils.views import PublicReadCrudViewSet
 
 if TYPE_CHECKING:
     from rest_framework.request import Request
-    from rest_framework.response import Response
 
 
 class SongViewSet(GenericViewSet):
@@ -48,6 +52,8 @@ class SongViewSet(GenericViewSet):
             return [CanPublishSongs()]
         if self.action == "transport":
             return [AllowAny()]
+        if self.action == "favorites":
+            return [IsAuthenticated()]
         return super().get_permissions()
 
     def list(self, request: Request) -> ApiResponse | Response:
@@ -166,6 +172,12 @@ class SongViewSet(GenericViewSet):
             data=SongSerializer(song, context={"request": request}).data,
             status=status.HTTP_200_OK,
         )
+
+    @action(detail=True, methods=["post"])
+    def favorites(self, request: Request, pk: str | None = None) -> ApiResponse:
+        song = self.get_object()
+        is_favorite = ToggleFavoriteService(user=request.user, song=song).dispatch()  # type: ignore[arg-type]
+        return ApiResponse(data={"is_favorite": is_favorite}, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["post"])
     def transport(self, request: Request, pk: str | None = None) -> ApiResponse:
