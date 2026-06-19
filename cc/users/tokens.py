@@ -6,8 +6,7 @@ from datetime import timedelta
 
 from django.utils import timezone
 
-from cc.users.models import EmailToken
-from cc.users.models import User
+from cc.users.models import EmailToken, User
 
 _TOKEN_CHARS = string.ascii_uppercase + string.digits
 TOKEN_TTL_MINUTES = 20

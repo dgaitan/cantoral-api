@@ -8,9 +8,7 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from rest_framework.test import APIClient
 
-from cc.songs.tests.factories import AuthorFactory
-from cc.songs.tests.factories import SongFactory
-from cc.songs.tests.factories import TagFactory
+from cc.songs.tests.factories import AuthorFactory, SongFactory, TagFactory
 
 pytestmark = pytest.mark.django_db
 

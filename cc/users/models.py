@@ -4,9 +4,7 @@ from typing import ClassVar
 
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-from django.db.models import BooleanField
-from django.db.models import CharField
-from django.db.models import EmailField
+from django.db.models import BooleanField, CharField, EmailField
 from django.utils.translation import gettext_lazy as _
 
 from .managers import UserManager
@@ -33,7 +31,9 @@ class User(AbstractUser):
 
 class EmailToken(models.Model):
     user = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="email_tokens",
+        User,
+        on_delete=models.CASCADE,
+        related_name="email_tokens",
     )
     token = models.CharField(max_length=6)
     expires_at = models.DateTimeField()

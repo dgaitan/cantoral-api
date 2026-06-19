@@ -28,8 +28,12 @@ class Command(BaseCommand):
         user.can_create_songs = True
         user.can_publish_songs = True
         user.can_create_playlists = True
-        user.save(update_fields=[
-            "can_create_songs", "can_publish_songs", "can_create_playlists",
-        ])
+        user.save(
+            update_fields=[
+                "can_create_songs",
+                "can_publish_songs",
+                "can_create_playlists",
+            ]
+        )
 
         self.stdout.write(self.style.SUCCESS(f"Admin user created: {email}"))

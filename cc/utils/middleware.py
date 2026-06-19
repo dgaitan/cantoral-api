@@ -7,8 +7,7 @@ from django.http import JsonResponse
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from django.http import HttpRequest
-    from django.http import HttpResponse
+    from django.http import HttpRequest, HttpResponse
 
 _REQUIRE_JSON_CONTENT_TYPE = frozenset({"POST", "PUT", "PATCH"})
 

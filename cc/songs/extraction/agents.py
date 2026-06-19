@@ -32,7 +32,8 @@ _MIME_FROM_EXTENSION: dict[str, str] = {
 def _download_image(url: str, timeout: int = 10) -> tuple[bytes, str]:
     try:
         req = urllib.request.Request(  # noqa: S310
-            url, headers={"User-Agent": "CantorCatolico/1.0"},
+            url,
+            headers={"User-Agent": "CantorCatolico/1.0"},
         )
         with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310
             data: bytes = resp.read()
@@ -88,9 +89,7 @@ class AnthropicAgent(ExtractionAgent):
             ],
         )
         parts = [
-            block.text
-            for block in response.content
-            if isinstance(block, TextBlock)
+            block.text for block in response.content if isinstance(block, TextBlock)
         ]
         if not parts:
             msg = "Anthropic response did not contain text content."

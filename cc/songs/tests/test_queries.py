@@ -73,7 +73,11 @@ class TestSongQuerySetFilters:
         wrong_author = SongFactory.create()
         wrong_author.tags.add(tag)
 
-        result = set(SongQuerySet().with_filters(author_id=author.id, tag_id=tag.id).get_queryset())
+        result = set(
+            SongQuerySet()
+            .with_filters(author_id=author.id, tag_id=tag.id)
+            .get_queryset(),
+        )
 
         assert match in result
         assert wrong_tag not in result

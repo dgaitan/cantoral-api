@@ -6,7 +6,13 @@ CHROMATIC = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
 # Map flat spellings to their sharp equivalent for index lookup
 _FLAT_TO_SHARP: dict[str, str] = {
-    "Db": "C#", "Eb": "D#", "Fb": "E", "Gb": "F#", "Ab": "G#", "Bb": "A#", "Cb": "B",
+    "Db": "C#",
+    "Eb": "D#",
+    "Fb": "E",
+    "Gb": "F#",
+    "Ab": "G#",
+    "Bb": "A#",
+    "Cb": "B",
 }
 
 # Preferred display form depends on original root: flats stay flats, sharps stay sharps

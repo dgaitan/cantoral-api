@@ -11,9 +11,7 @@ from typing import TYPE_CHECKING
 from django.db import transaction
 from django.utils.text import slugify
 
-from cc.songs.models import Author
-from cc.songs.models import Song
-from cc.songs.models import Tag
+from cc.songs.models import Author, Song, Tag
 from cc.users.models import User
 
 if TYPE_CHECKING:
@@ -283,8 +281,11 @@ class ImportSongsService:
         cat_map, folder_map = _import_tags(categories_rows, folders_rows)
         tag_map = {**cat_map, **folder_map}
         song_authors, song_tags = _build_song_relations(
-            authors_songs, categories_songs, folder_song_rows,
-            tag_map, author_map,
+            authors_songs,
+            categories_songs,
+            folder_song_rows,
+            tag_map,
+            author_map,
         )
 
         verses_by_song: dict[str, list[dict[str, str | None]]] = {}
@@ -300,7 +301,10 @@ class ImportSongsService:
                 continue
             try:
                 plain_lyrics = _convert_lyrics(
-                    row, verses_by_song, use_verses, self.default_tone,
+                    row,
+                    verses_by_song,
+                    use_verses,
+                    self.default_tone,
                 )
             except Exception as exc:  # noqa: BLE001
                 self._warn(f"Skipping song {row.get('name')!r}: {exc}")
