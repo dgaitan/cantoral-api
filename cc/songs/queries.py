@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Self
+from typing import TYPE_CHECKING, Self
+
 from django.db.models import Q
 
 from cc.songs.models import Song
@@ -11,14 +12,16 @@ if TYPE_CHECKING:
 
 
 class SongQuerySet(BaseQuerySet):
-    available_filters: List[str] = [
+    available_filters: list[str] = [
         "search",
         "author_id",
         "tag_id",
     ]
 
     def base_queryset(self) -> QuerySet[Song]:
-        return Song.objects.prefetch_related("tags", "authors", "verses").order_by("-created_at")
+        return Song.objects.prefetch_related("tags", "authors", "verses").order_by(
+            "-created_at",
+        )
 
     def perform_filters(self) -> Self:
         needs_distinct: bool = False
@@ -35,15 +38,17 @@ class SongQuerySet(BaseQuerySet):
         if self.filters.get("author_id"):
             try:
                 author_id = int(self.filters["author_id"])
-            except (ValueError, TypeError):
-                raise ValueError(f"author_id must be an integer, got {self.filters['author_id']!r}")
+            except (ValueError, TypeError) as exc:
+                msg = f"author_id must be an integer, got {self.filters['author_id']!r}"
+                raise ValueError(msg) from exc
             self.queryset = self.queryset.filter(authors__id=author_id)
 
         if self.filters.get("tag_id"):
             try:
                 tag_id = int(self.filters["tag_id"])
-            except (ValueError, TypeError):
-                raise ValueError(f"tag_id must be an integer, got {self.filters['tag_id']!r}")
+            except (ValueError, TypeError) as exc:
+                msg = f"tag_id must be an integer, got {self.filters['tag_id']!r}"
+                raise ValueError(msg) from exc
             self.queryset = self.queryset.filter(tags__id=tag_id)
 
         if needs_distinct:

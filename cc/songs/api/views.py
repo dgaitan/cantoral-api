@@ -6,7 +6,6 @@ from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.viewsets import GenericViewSet
 
 from cc.songs.api.permissions import CanCreateSongs, CanPublishSongs
 from cc.songs.api.serializers import (
@@ -31,7 +30,7 @@ from cc.songs.services import (
 from cc.utils.pagination import ApiPageNumberPagination
 from cc.utils.responses import ApiResponse
 from cc.utils.throttles import FavoriteToggleThrottle
-from cc.utils.views import PublicReadCrudViewSet, BaseViewSet
+from cc.utils.views import BaseViewSet, PublicReadCrudViewSet
 
 if TYPE_CHECKING:
     from django.db.models import QuerySet
@@ -58,9 +57,15 @@ class SongViewSet(BaseViewSet):
 
     def list(self, request: Request) -> ApiResponse | Response:
         try:
-            queryset: QuerySet[Song] = SongQuerySet().with_filters(**request.query_params).get_queryset()
+            queryset: QuerySet[Song] = (
+                SongQuerySet().with_filters(**request.query_params).get_queryset()
+            )
         except ValueError as exc:
-            return ApiResponse(errors=[str(exc)], success=False, status=status.HTTP_400_BAD_REQUEST)
+            return ApiResponse(
+                errors=[str(exc)],
+                success=False,
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = SongSerializer(page, many=True, context={"request": request})
@@ -104,7 +109,8 @@ class SongViewSet(BaseViewSet):
     def update(self, request: Request, pk: str | None = None) -> ApiResponse:
         song = self.get_object()
         serializer = SongWriteSerializer(
-            data=request.data, context={"song_instance": song},
+            data=request.data,
+            context={"song_instance": song},
         )
         if not serializer.is_valid():
             return ApiResponse(
@@ -135,7 +141,9 @@ class SongViewSet(BaseViewSet):
     def partial_update(self, request: Request, pk: str | None = None) -> ApiResponse:
         song = self.get_object()
         serializer = SongWriteSerializer(
-            data=request.data, partial=True, context={"song_instance": song},
+            data=request.data,
+            partial=True,
+            context={"song_instance": song},
         )
         if not serializer.is_valid():
             return ApiResponse(
@@ -215,7 +223,9 @@ class AuthorViewSet(PublicReadCrudViewSet):
     @action(detail=True, methods=["get"])
     def songs(self, request: Request, pk: str | None = None) -> ApiResponse | Response:
         author = self.get_object()
-        qs: QuerySet[Song] = SongQuerySet().with_filters(author_id=author.id).get_queryset()
+        qs: QuerySet[Song] = (
+            SongQuerySet().with_filters(author_id=author.id).get_queryset()
+        )
         page = self.paginate_queryset(qs)
         if page is not None:
             serializer = SongSerializer(page, many=True, context={"request": request})

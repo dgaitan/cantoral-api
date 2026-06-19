@@ -131,7 +131,8 @@ class ToggleFavoriteService:
     @transaction.atomic
     def dispatch(self) -> bool:
         favorite, created = Favorite.objects.get_or_create(
-            user=self.user, song=self.song,
+            user=self.user,
+            song=self.song,
         )
         if not created:
             favorite.delete()
@@ -139,7 +140,9 @@ class ToggleFavoriteService:
         else:
             result = True
         cache.set(
-            f"user_{self.user.pk}_favorited_song_{self.song.pk}", result, timeout=3600,
+            f"user_{self.user.pk}_favorited_song_{self.song.pk}",
+            result,
+            timeout=3600,
         )
         return result
 

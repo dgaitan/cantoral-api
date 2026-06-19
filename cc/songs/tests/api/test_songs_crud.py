@@ -8,9 +8,7 @@ from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from cc.songs.models import Song
-from cc.songs.tests.factories import AuthorFactory
-from cc.songs.tests.factories import SongFactory
-from cc.songs.tests.factories import TagFactory
+from cc.songs.tests.factories import AuthorFactory, SongFactory, TagFactory
 from cc.users.tests.factories import UserFactory
 
 pytestmark = pytest.mark.django_db
@@ -47,13 +45,15 @@ def _auth_client(user: object) -> APIClient:
 
 # ── List ──────────────────────────────────────────────────────────────────────
 
+
 class TestSongList:
     def test_returns_200_with_paginated_results(self) -> None:
-        SongFactory.create_batch(3)
+        song_count = 3
+        SongFactory.create_batch(song_count)
         response = APIClient().get(reverse("song-list"))
         assert response.status_code == HTTPStatus.OK
         assert response.data["success"] is True
-        assert response.data["data"]["count"] == 3
+        assert response.data["data"]["count"] == song_count
 
     def test_publicly_accessible(self) -> None:
         SongFactory.create()
@@ -71,6 +71,7 @@ class TestSongList:
 
 # ── Retrieve ──────────────────────────────────────────────────────────────────
 
+
 class TestSongRetrieve:
     def test_returns_200_with_full_payload(self) -> None:
         tag = TagFactory.create()
@@ -81,7 +82,17 @@ class TestSongRetrieve:
         response = APIClient().get(reverse("song-detail", kwargs={"pk": song.pk}))
         assert response.status_code == HTTPStatus.OK
         data = response.data["data"]
-        for field in ("id", "name", "views", "tags", "authors", "plain_lyrics", "tone", "is_public", "lyrics"):
+        for field in (
+            "id",
+            "name",
+            "views",
+            "tags",
+            "authors",
+            "plain_lyrics",
+            "tone",
+            "is_public",
+            "lyrics",
+        ):
             assert field in data
         assert data["tags"][0]["id"] == tag.pk
         assert data["authors"][0]["id"] == author.pk
@@ -99,6 +110,7 @@ class TestSongRetrieve:
 
 
 # ── Create ────────────────────────────────────────────────────────────────────
+
 
 class TestSongCreate:
     def test_creates_with_required_fields(self) -> None:
@@ -122,11 +134,20 @@ class TestSongCreate:
         tag = TagFactory.create()
         response = _auth_client(user).post(
             reverse("song-list"),
-            {"name": "Song", "authors": [author.pk], "tags": [tag.pk], "lyrics": _LYRICS_G},
+            {
+                "name": "Song",
+                "authors": [author.pk],
+                "tags": [tag.pk],
+                "lyrics": _LYRICS_G,
+            },
             format="json",
         )
         assert response.status_code == HTTPStatus.CREATED
-        assert Song.objects.get(pk=response.data["data"]["id"]).tags.filter(pk=tag.pk).exists()
+        assert (
+            Song.objects.get(pk=response.data["data"]["id"])
+            .tags.filter(pk=tag.pk)
+            .exists()
+        )
 
     def test_no_tags_defaults_to_empty(self) -> None:
         user = UserFactory.create(can_create_songs=True)
@@ -195,7 +216,12 @@ class TestSongCreate:
         author = AuthorFactory.create()
         response = _auth_client(user).post(
             reverse("song-list"),
-            {"name": "Song", "authors": [author.pk], "tags": [99999], "lyrics": _LYRICS_G},
+            {
+                "name": "Song",
+                "authors": [author.pk],
+                "tags": [99999],
+                "lyrics": _LYRICS_G,
+            },
             format="json",
         )
         assert response.status_code == HTTPStatus.BAD_REQUEST
@@ -221,6 +247,7 @@ class TestSongCreate:
 
 
 # ── Update (full) ─────────────────────────────────────────────────────────────
+
 
 class TestSongUpdate:
     def test_returns_200_with_updated_data(self) -> None:
@@ -248,7 +275,12 @@ class TestSongUpdate:
         song.tags.add(tag1)
         _auth_client(user).put(
             reverse("song-detail", kwargs={"pk": song.pk}),
-            {"name": song.name, "authors": [author.pk], "tags": [tag2.pk], "lyrics": _LYRICS_G},
+            {
+                "name": song.name,
+                "authors": [author.pk],
+                "tags": [tag2.pk],
+                "lyrics": _LYRICS_G,
+            },
             format="json",
         )
         song.refresh_from_db()
@@ -263,7 +295,12 @@ class TestSongUpdate:
         song.tags.add(tag)
         _auth_client(user).put(
             reverse("song-detail", kwargs={"pk": song.pk}),
-            {"name": song.name, "authors": [author.pk], "tags": [], "lyrics": _LYRICS_G},
+            {
+                "name": song.name,
+                "authors": [author.pk],
+                "tags": [],
+                "lyrics": _LYRICS_G,
+            },
             format="json",
         )
         song.refresh_from_db()
@@ -298,7 +335,12 @@ class TestSongUpdate:
         author = AuthorFactory.create()
         response = _auth_client(user).put(
             reverse("song-detail", kwargs={"pk": song.pk}),
-            {"name": song.name, "authors": [author.pk], "tags": [99999], "lyrics": _LYRICS_G},
+            {
+                "name": song.name,
+                "authors": [author.pk],
+                "tags": [99999],
+                "lyrics": _LYRICS_G,
+            },
             format="json",
         )
         assert response.status_code == HTTPStatus.BAD_REQUEST
@@ -328,19 +370,24 @@ class TestSongUpdate:
         user = UserFactory.create(can_create_songs=False)
         song = SongFactory.create()
         response = _auth_client(user).put(
-            reverse("song-detail", kwargs={"pk": song.pk}), {}, format="json",
+            reverse("song-detail", kwargs={"pk": song.pk}),
+            {},
+            format="json",
         )
         assert response.status_code == HTTPStatus.FORBIDDEN
 
     def test_unauthenticated_returns_401(self) -> None:
         song = SongFactory.create()
         response = APIClient().put(
-            reverse("song-detail", kwargs={"pk": song.pk}), {}, format="json",
+            reverse("song-detail", kwargs={"pk": song.pk}),
+            {},
+            format="json",
         )
         assert response.status_code == HTTPStatus.UNAUTHORIZED
 
 
 # ── Partial update ────────────────────────────────────────────────────────────
+
 
 class TestSongPartialUpdate:
     def test_name_only_returns_200(self) -> None:
@@ -424,37 +471,48 @@ class TestSongPartialUpdate:
         user = UserFactory.create(can_create_songs=False)
         song = SongFactory.create()
         response = _auth_client(user).patch(
-            reverse("song-detail", kwargs={"pk": song.pk}), {}, format="json",
+            reverse("song-detail", kwargs={"pk": song.pk}),
+            {},
+            format="json",
         )
         assert response.status_code == HTTPStatus.FORBIDDEN
 
     def test_unauthenticated_returns_401(self) -> None:
         song = SongFactory.create()
         response = APIClient().patch(
-            reverse("song-detail", kwargs={"pk": song.pk}), {}, format="json",
+            reverse("song-detail", kwargs={"pk": song.pk}),
+            {},
+            format="json",
         )
         assert response.status_code == HTTPStatus.UNAUTHORIZED
 
 
 # ── Delete ────────────────────────────────────────────────────────────────────
 
+
 class TestSongDelete:
     def test_returns_204_and_removes_record(self) -> None:
         user = UserFactory.create(can_create_songs=True)
         song = SongFactory.create()
-        response = _auth_client(user).delete(reverse("song-detail", kwargs={"pk": song.pk}))
+        response = _auth_client(user).delete(
+            reverse("song-detail", kwargs={"pk": song.pk}),
+        )
         assert response.status_code == HTTPStatus.NO_CONTENT
         assert not Song.objects.filter(pk=song.pk).exists()
 
     def test_nonexistent_returns_404(self) -> None:
         user = UserFactory.create(can_create_songs=True)
-        response = _auth_client(user).delete(reverse("song-detail", kwargs={"pk": 99999}))
+        response = _auth_client(user).delete(
+            reverse("song-detail", kwargs={"pk": 99999}),
+        )
         assert response.status_code == HTTPStatus.NOT_FOUND
 
     def test_no_permission_returns_403(self) -> None:
         user = UserFactory.create(can_create_songs=False)
         song = SongFactory.create()
-        response = _auth_client(user).delete(reverse("song-detail", kwargs={"pk": song.pk}))
+        response = _auth_client(user).delete(
+            reverse("song-detail", kwargs={"pk": song.pk}),
+        )
         assert response.status_code == HTTPStatus.FORBIDDEN
 
     def test_unauthenticated_returns_401(self) -> None:

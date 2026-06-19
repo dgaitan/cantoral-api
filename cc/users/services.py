@@ -5,8 +5,7 @@ from django.db import transaction
 
 from cc.users.emails import EmailTokenMail
 from cc.users.models import User
-from cc.users.tokens import create_email_token
-from cc.users.tokens import verify_email_token
+from cc.users.tokens import create_email_token, verify_email_token
 
 
 class RegisterUserService:

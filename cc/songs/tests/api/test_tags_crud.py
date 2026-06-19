@@ -8,25 +8,24 @@ from rest_framework.test import APIClient
 
 from cc.songs.models import Tag
 from cc.songs.tests.api.base import AuthenticatedApiTest
-from cc.songs.tests.factories import SongFactory
-from cc.songs.tests.factories import TagFactory
+from cc.songs.tests.factories import SongFactory, TagFactory
 
 pytestmark = pytest.mark.django_db
 
 
 class TestTagsCrud(AuthenticatedApiTest):
-
     # ── List ──────────────────────────────────────────────────────────────────
 
     def test_list_all_tags_returns_200_with_all_tags(self) -> None:
-        TagFactory.create_batch(3)
+        tag_count = 3
+        TagFactory.create_batch(tag_count)
         response = APIClient().get(reverse("tag-list"))
         assert response.status_code == HTTPStatus.OK
         assert response.data["success"] is True
         data = response.data["data"]
-        assert data["count"] == 3
+        assert data["count"] == tag_count
         results = data["results"]
-        assert len(results) == 3
+        assert len(results) == tag_count
         for field in ("id", "name", "slug", "parent_id"):
             assert field in results[0]
 
@@ -141,13 +140,17 @@ class TestTagsCrud(AuthenticatedApiTest):
     def test_create_tag_without_permission_returns_403(self) -> None:
         client = self._auth_client(can_create_songs=False)
         response = client.post(
-            reverse("tag-list"), {"name": "Test"}, format="json"
+            reverse("tag-list"),
+            {"name": "Test"},
+            format="json",
         )
         assert response.status_code == HTTPStatus.FORBIDDEN
 
     def test_create_tag_unauthenticated_returns_401(self) -> None:
         response = APIClient().post(
-            reverse("tag-list"), {"name": "Test"}, format="json"
+            reverse("tag-list"),
+            {"name": "Test"},
+            format="json",
         )
         assert response.status_code == HTTPStatus.UNAUTHORIZED
 
@@ -155,14 +158,15 @@ class TestTagsCrud(AuthenticatedApiTest):
 
     def test_retrieve_tag_songs_returns_associated_songs(self) -> None:
         tag = TagFactory.create()
-        songs = SongFactory.create_batch(2)
+        song_count = 2
+        songs = SongFactory.create_batch(song_count)
         for song in songs:
             song.tags.add(tag)
         response = APIClient().get(reverse("tag-songs", kwargs={"pk": tag.pk}))
         assert response.status_code == HTTPStatus.OK
         data = response.data["data"]
         results = data["results"]
-        assert len(results) == 2
+        assert len(results) == song_count
         assert all("id" in s and "name" in s for s in results)
 
     def test_retrieve_tag_songs_empty_list_when_no_songs(self) -> None:
@@ -186,12 +190,13 @@ class TestTagsCrud(AuthenticatedApiTest):
 
     def test_retrieve_tag_children_returns_direct_children_only(self) -> None:
         parent = TagFactory.create()
-        children = TagFactory.create_batch(2, parent=parent)
+        child_count = 2
+        children = TagFactory.create_batch(child_count, parent=parent)
         grandchild = TagFactory.create(parent=children[0])
         response = APIClient().get(reverse("tag-children", kwargs={"pk": parent.pk}))
         assert response.status_code == HTTPStatus.OK
         data = response.data["data"]
-        assert len(data) == 2
+        assert len(data) == child_count
         child_ids = {c["id"] for c in data}
         assert grandchild.pk not in child_ids
         for child in data:

@@ -3,19 +3,22 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from rest_framework import status
-from rest_framework.permissions import AllowAny
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from cc.users.api.serializers import LoginUserSerializer
-from cc.users.api.serializers import LogoutSerializer
-from cc.users.api.serializers import RegisterUserSerializer
-from cc.users.api.serializers import VerifyEmailTokenSerializer
-from cc.users.services import LoginUserService
-from cc.users.services import RegisterUserService
-from cc.users.services import VerifyEmailTokenService
+from cc.users.api.serializers import (
+    LoginUserSerializer,
+    LogoutSerializer,
+    RegisterUserSerializer,
+    VerifyEmailTokenSerializer,
+)
+from cc.users.services import (
+    LoginUserService,
+    RegisterUserService,
+    VerifyEmailTokenService,
+)
 from cc.utils.responses import ApiResponse
 from cc.utils.throttles import AuthRateThrottle
 

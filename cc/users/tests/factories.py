@@ -4,14 +4,10 @@ import string
 from datetime import timedelta
 
 from django.utils import timezone
-from factory import Faker
-from factory import LazyFunction
-from factory import SubFactory
-from factory import post_generation
+from factory import Faker, LazyFunction, SubFactory, post_generation
 from factory.django import DjangoModelFactory
 
-from cc.users.models import EmailToken
-from cc.users.models import User
+from cc.users.models import EmailToken, User
 
 _TOKEN_LETTERS = string.ascii_uppercase + string.digits
 

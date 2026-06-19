@@ -8,26 +8,25 @@ from rest_framework.test import APIClient
 
 from cc.songs.models import Author
 from cc.songs.tests.api.base import AuthenticatedApiTest
-from cc.songs.tests.factories import AuthorFactory
-from cc.songs.tests.factories import SongFactory
+from cc.songs.tests.factories import AuthorFactory, SongFactory
 
 pytestmark = pytest.mark.django_db
 
 
 class TestAuthorsCrud(AuthenticatedApiTest):
-
     # ── List ──────────────────────────────────────────────────────────────────
 
     def test_list_all_authors_returns_200_with_all_authors(self) -> None:
-        AuthorFactory.create_batch(3)
+        author_count = 3
+        AuthorFactory.create_batch(author_count)
         client = APIClient()
         response = client.get(reverse("author-list"))
         assert response.status_code == HTTPStatus.OK
         assert response.data["success"] is True
         data = response.data["data"]
-        assert data["count"] == 3
+        assert data["count"] == author_count
         results = data["results"]
-        assert len(results) == 3
+        assert len(results) == author_count
         for field in ("id", "name", "image", "bio", "slug"):
             assert field in results[0]
 
@@ -104,13 +103,17 @@ class TestAuthorsCrud(AuthenticatedApiTest):
     def test_create_author_without_permission_returns_403(self) -> None:
         client = self._auth_client(can_create_songs=False)
         response = client.post(
-            reverse("author-list"), {"name": "Test"}, format="json"
+            reverse("author-list"),
+            {"name": "Test"},
+            format="json",
         )
         assert response.status_code == HTTPStatus.FORBIDDEN
 
     def test_create_author_unauthenticated_returns_401(self) -> None:
         response = APIClient().post(
-            reverse("author-list"), {"name": "Test"}, format="json"
+            reverse("author-list"),
+            {"name": "Test"},
+            format="json",
         )
         assert response.status_code == HTTPStatus.UNAUTHORIZED
 
@@ -118,14 +121,15 @@ class TestAuthorsCrud(AuthenticatedApiTest):
 
     def test_retrieve_author_songs_returns_associated_songs(self) -> None:
         author = AuthorFactory.create()
-        songs = SongFactory.create_batch(2)
+        song_count = 2
+        songs = SongFactory.create_batch(song_count)
         for song in songs:
             song.authors.add(author)
         response = APIClient().get(reverse("author-songs", kwargs={"pk": author.pk}))
         assert response.status_code == HTTPStatus.OK
         data = response.data["data"]
         results = data["results"]
-        assert len(results) == 2
+        assert len(results) == song_count
         assert all("id" in s and "name" in s for s in results)
 
     def test_retrieve_author_songs_empty_list_when_no_songs(self) -> None:
@@ -260,6 +264,6 @@ class TestAuthorsCrud(AuthenticatedApiTest):
     def test_delete_unauthenticated_returns_401(self) -> None:
         author = AuthorFactory.create()
         response = APIClient().delete(
-            reverse("author-detail", kwargs={"pk": author.pk})
+            reverse("author-detail", kwargs={"pk": author.pk}),
         )
         assert response.status_code == HTTPStatus.UNAUTHORIZED

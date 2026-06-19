@@ -1,18 +1,18 @@
 from __future__ import annotations
 
 from django.utils.text import slugify
-from factory import Faker
-from factory import LazyAttribute
-from factory import LazyFunction
-from factory import Sequence
-from factory import SubFactory
-from factory import post_generation
+from factory import (
+    Faker,
+    LazyAttribute,
+    LazyFunction,
+    Sequence,
+    SubFactory,
+    post_generation,
+)
 from factory.django import DjangoModelFactory
 
 from cc.songs.lyrics.parser import LyricsParser
-from cc.songs.models import Author
-from cc.songs.models import Song
-from cc.songs.models import Tag
+from cc.songs.models import Author, Song, Tag
 from cc.songs.services import sync_song_verses
 from cc.users.tests.factories import UserFactory
 

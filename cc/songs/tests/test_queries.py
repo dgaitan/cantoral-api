@@ -17,7 +17,7 @@ class TestSongQuerySetBase:
 
     def test_base_queryset_prefetches_tags_authors_verses(self) -> None:
         qs = SongQuerySet().get_queryset()
-        assert {"tags", "authors", "verses"} <= set(qs._prefetch_related_lookups)  # type: ignore[attr-defined]
+        assert {"tags", "authors", "verses"} <= set(qs._prefetch_related_lookups)  # type: ignore[attr-defined]  # noqa: SLF001
 
 
 class TestSongQuerySetFilters:
@@ -73,7 +73,8 @@ class TestSongQuerySetFilters:
         wrong_author = SongFactory.create()
         wrong_author.tags.add(tag)
 
-        result = set(SongQuerySet().with_filters(author_id=author.id, tag_id=tag.id).get_queryset())
+        qs = SongQuerySet().with_filters(author_id=author.id, tag_id=tag.id)
+        result = set(qs.get_queryset())
 
         assert match in result
         assert wrong_tag not in result
