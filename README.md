@@ -45,6 +45,20 @@ To run the tests, check your test coverage, and generate an HTML coverage report
 
 Moved to [Live reloading and SASS compilation](https://cookiecutter-django.readthedocs.io/en/latest/2-local-development/developing-locally.html#using-webpack-or-gulp).
 
+### Celery
+
+Celery uses Redis as the broker and result backend (`redis://localhost:6379/0` by default). Make sure Redis is running before starting a worker.
+
+Start a worker in a separate terminal:
+
+    uv run celery -A config worker -l info
+
+To also process scheduled tasks (beat), run in another terminal:
+
+    uv run celery -A config beat -l info
+
+Tasks are defined in `cc/<app>/tasks.py` using `@shared_task`.
+
 ### Email Server
 
 In development, it is often nice to be able to see emails that are being sent from your application. If you choose to use [Mailpit](https://github.com/axllent/mailpit) when generating the project a local SMTP server with a web interface will be available.
