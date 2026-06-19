@@ -87,7 +87,9 @@ PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.BCryptSHA256PasswordHasher",
 ]
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+    },
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
@@ -216,9 +218,12 @@ SIMPLE_JWT = {
 # django-cors-headers
 # -------------------------------------------------------------------------------
 CORS_URLS_REGEX = r"^/api/.*$"
-CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[
-    "http://localhost:3000",
-])
+CORS_ALLOWED_ORIGINS = env.list(
+    "CORS_ALLOWED_ORIGINS",
+    default=[
+        "http://localhost:3000",
+    ],
+)
 
 # drf-spectacular
 # -------------------------------------------------------------------------------
@@ -243,7 +248,10 @@ ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default="")
 ANTHROPIC_VISION_MODEL = env("ANTHROPIC_VISION_MODEL", default="claude-sonnet-4-5")
 GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
 GEMINI_VISION_MODEL = env("GEMINI_VISION_MODEL", default="gemini-3.5-flash")
-CHORD_EXTRACTION_DEFAULT_AGENT = env("CHORD_EXTRACTION_DEFAULT_AGENT", default="anthropic")
+CHORD_EXTRACTION_DEFAULT_AGENT = env(
+    "CHORD_EXTRACTION_DEFAULT_AGENT",
+    default="anthropic",
+)
 
 # Your stuff...
 # ------------------------------------------------------------------------------

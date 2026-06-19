@@ -19,9 +19,8 @@ class SongQuerySet(BaseQuerySet):
     ]
 
     def base_queryset(self) -> QuerySet[Song]:
-        return (
-            Song.objects.prefetch_related("tags", "authors", "verses")
-            .order_by("-created_at")
+        return Song.objects.prefetch_related("tags", "authors", "verses").order_by(
+            "-created_at",
         )
 
     def perform_filters(self) -> Self:

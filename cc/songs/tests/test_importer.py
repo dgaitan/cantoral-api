@@ -78,8 +78,11 @@ _VERSES_BLOCK = textwrap.dedent("""\
 """)  # noqa: E501
 
 _SQL_BLOCKS = [
-    _SONGS_BLOCK, _AUTHORS_BLOCK, _CATEGORIES_BLOCK,
-    _AUTHORS_SONGS_BLOCK, _CATEGORIES_SONGS_BLOCK,
+    _SONGS_BLOCK,
+    _AUTHORS_BLOCK,
+    _CATEGORIES_BLOCK,
+    _AUTHORS_SONGS_BLOCK,
+    _CATEGORIES_SONGS_BLOCK,
 ]
 _SQL_NO_VERSES = "\n".join(_SQL_BLOCKS)
 _SQL_WITH_VERSES = f"{_SQL_NO_VERSES}\n{_VERSES_BLOCK}"
@@ -88,6 +91,7 @@ _SQL_WITH_VERSES = f"{_SQL_NO_VERSES}\n{_VERSES_BLOCK}"
 # ---------------------------------------------------------------------------
 # Unit tests — PostgresSqlDumpParser
 # ---------------------------------------------------------------------------
+
 
 class TestPostgresSqlDumpParser:
     def test_parse_table_extracts_rows(self):
@@ -109,6 +113,7 @@ class TestPostgresSqlDumpParser:
 # ---------------------------------------------------------------------------
 # Unit tests — InlineChordConverter
 # ---------------------------------------------------------------------------
+
 
 class TestInlineChordConverter:
     def test_inline_chord_no_chords(self):
@@ -149,12 +154,17 @@ class TestInlineChordConverter:
 # Unit tests — LyricsConverter.from_verses
 # ---------------------------------------------------------------------------
 
+
 class TestLyricsConverterFromVerses:
     def _row(self, order: int, verse_type: str, content: str) -> dict:
         return {
-            "id": "1", "created_at": None, "updated_at": None,
-            "song_id": "1", "order": str(order),
-            "verse_type": verse_type, "content": content,
+            "id": "1",
+            "created_at": None,
+            "updated_at": None,
+            "song_id": "1",
+            "order": str(order),
+            "verse_type": verse_type,
+            "content": content,
         }
 
     def test_maps_verse_type_to_section(self):
@@ -194,6 +204,7 @@ class TestLyricsConverterFromVerses:
 # Unit tests — LyricsConverter.from_lyrics_json
 # ---------------------------------------------------------------------------
 
+
 class TestLyricsConverterFromLyricsJson:
     def test_strips_html_tags(self):
         section = {"type": "verse", "data": {"content": "<p>Hello world</p>"}}
@@ -225,6 +236,7 @@ class TestLyricsConverterFromLyricsJson:
 # ---------------------------------------------------------------------------
 # Integration tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def admin_user(db):
@@ -329,7 +341,9 @@ class TestImportSongsService:
         assert Song.objects.get(name="Song Two").slug == "song-two"
 
     def test_import_falls_back_to_slugified_name_when_slug_null(
-        self, tmp_path, admin_user,
+        self,
+        tmp_path,
+        admin_user,
     ):
         # Row with \N (NULL) in the slug column — importer must derive from name.
         row = (
@@ -339,10 +353,7 @@ class TestImportSongsService:
             r'[{"type":"verse","data":{"content":"<p>Hello</p>"}}]'
             "\t" + r"\N\t\N\t\N\t\N\t\N\t\N\t\N\t\N\t0\t0\t0\t\N\t\N\t\N"
         )
-        songs_block = (
-            f"COPY public.songs ({_SONGS_COLS}) FROM stdin;\n"
-            f"{row}\n" + r"\."
-        )
+        songs_block = f"COPY public.songs ({_SONGS_COLS}) FROM stdin;\n{row}\n" + r"\."
         sql = f"{songs_block}\n{_AUTHORS_BLOCK}\n{_CATEGORIES_BLOCK}\n"
         sql += f"{_AUTHORS_SONGS_BLOCK}\n{_CATEGORIES_SONGS_BLOCK}"
         f = tmp_path / "null_slug.sql"

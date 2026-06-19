@@ -24,7 +24,11 @@ class TestRegister:
         client = APIClient()
         response = client.post(
             reverse("auth-register"),
-            {"name": "New User", "email": "new@example.com", "password": _TEST_PASSWORD},  # noqa: E501
+            {
+                "name": "New User",
+                "email": "new@example.com",
+                "password": _TEST_PASSWORD,
+            },
         )
         assert response.status_code == HTTPStatus.CREATED
         assert response.data["success"] is True
@@ -37,7 +41,11 @@ class TestRegister:
         client = APIClient()
         client.post(
             reverse("auth-register"),
-            {"name": "Upper User", "email": "UPPER@EXAMPLE.COM", "password": _TEST_PASSWORD},  # noqa: E501
+            {
+                "name": "Upper User",
+                "email": "UPPER@EXAMPLE.COM",
+                "password": _TEST_PASSWORD,
+            },
         )
         assert User.objects.filter(email="upper@example.com").exists()
 
@@ -116,7 +124,8 @@ class TestVerifyEmailToken:
     def test_expired_token_returns_error(self) -> None:
         user = UserFactory.create(is_active=False)
         EmailTokenFactory.create(
-            user=user, expires_at=timezone.now() - timedelta(minutes=1),
+            user=user,
+            expires_at=timezone.now() - timedelta(minutes=1),
         )
         client = APIClient()
         response = client.post(

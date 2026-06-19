@@ -16,7 +16,10 @@ if TYPE_CHECKING:
 
 class SongFTSFilter(BaseFilterBackend):
     def filter_queryset(
-        self, request: Request, queryset: QuerySet, view: APIView,
+        self,
+        request: Request,
+        queryset: QuerySet,
+        view: APIView,
     ) -> QuerySet:
         params = request.query_params
         needs_distinct = False
@@ -31,10 +34,18 @@ class SongFTSFilter(BaseFilterBackend):
             needs_distinct = True
 
         queryset, needs_distinct = self._maybe_filter_by_id(
-            params, "author_id", "authors__id", queryset, needs_distinct=needs_distinct,
+            params,
+            "author_id",
+            "authors__id",
+            queryset,
+            needs_distinct=needs_distinct,
         )
         queryset, needs_distinct = self._maybe_filter_by_id(
-            params, "tag_id", "tags__id", queryset, needs_distinct=needs_distinct,
+            params,
+            "tag_id",
+            "tags__id",
+            queryset,
+            needs_distinct=needs_distinct,
         )
 
         if needs_distinct:
@@ -62,7 +73,10 @@ class SongFTSFilter(BaseFilterBackend):
 
 class AuthorFTSFilter(BaseFilterBackend):
     def filter_queryset(
-        self, request: Request, queryset: QuerySet, view: APIView,
+        self,
+        request: Request,
+        queryset: QuerySet,
+        view: APIView,
     ) -> QuerySet:
         query = request.query_params.get("search", "").strip()
         if not query:
@@ -72,7 +86,10 @@ class AuthorFTSFilter(BaseFilterBackend):
 
 class TagFTSFilter(BaseFilterBackend):
     def filter_queryset(
-        self, request: Request, queryset: QuerySet, view: APIView,
+        self,
+        request: Request,
+        queryset: QuerySet,
+        view: APIView,
     ) -> QuerySet:
         query = request.query_params.get("search", "").strip()
         if not query:

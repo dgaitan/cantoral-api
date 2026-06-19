@@ -49,7 +49,9 @@ class FavoriteSongsView(APIView):
             )
         except ValueError as exc:
             return ApiResponse(
-                errors=[str(exc)], success=False, status=status.HTTP_400_BAD_REQUEST,
+                errors=[str(exc)],
+                success=False,
+                status=status.HTTP_400_BAD_REQUEST,
             )
         qs = qs.filter(favorites__user=request.user).order_by("-favorites__created_at")
         paginator = ApiPageNumberPagination()

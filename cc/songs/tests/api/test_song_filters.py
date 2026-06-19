@@ -112,7 +112,8 @@ class TestSongFilters:
         song3.tags.add(tag1, tag2)
 
         response = APIClient().get(
-            reverse("song-list"), {"author_id": author1.pk, "tag_id": tag1.pk},
+            reverse("song-list"),
+            {"author_id": author1.pk, "tag_id": tag1.pk},
         )
 
         assert response.status_code == HTTPStatus.OK
@@ -127,7 +128,8 @@ class TestSongFilters:
         song.authors.add(author1)
 
         response = APIClient().get(
-            reverse("song-list"), {"author_id": author1.pk, "tag_id": tag1.pk},
+            reverse("song-list"),
+            {"author_id": author1.pk, "tag_id": tag1.pk},
         )
 
         assert response.status_code == HTTPStatus.OK
@@ -145,7 +147,8 @@ class TestSongFilters:
         song_b.authors.add(author2)
 
         response = APIClient().get(
-            reverse("song-list"), {"search": "Magna", "author_id": author1.pk},
+            reverse("song-list"),
+            {"search": "Magna", "author_id": author1.pk},
         )
 
         assert response.status_code == HTTPStatus.OK
@@ -162,7 +165,8 @@ class TestSongFilters:
         song_b.tags.add(tag2)
 
         response = APIClient().get(
-            reverse("song-list"), {"search": "Sanctus", "tag_id": tag1.pk},
+            reverse("song-list"),
+            {"search": "Sanctus", "tag_id": tag1.pk},
         )
 
         assert response.status_code == HTTPStatus.OK
@@ -202,7 +206,8 @@ class TestSongFilters:
         song.authors.add(author2)
 
         response = APIClient().get(
-            reverse("song-list"), {"search": "Kyrie", "author_id": author1.pk},
+            reverse("song-list"),
+            {"search": "Kyrie", "author_id": author1.pk},
         )
 
         assert response.status_code == HTTPStatus.OK

@@ -14,7 +14,6 @@ pytestmark = pytest.mark.django_db
 
 
 class TestTagsCrud(AuthenticatedApiTest):
-
     # ── List ──────────────────────────────────────────────────────────────────
 
     def test_list_all_tags_returns_200_with_all_tags(self) -> None:
@@ -141,13 +140,17 @@ class TestTagsCrud(AuthenticatedApiTest):
     def test_create_tag_without_permission_returns_403(self) -> None:
         client = self._auth_client(can_create_songs=False)
         response = client.post(
-            reverse("tag-list"), {"name": "Test"}, format="json",
+            reverse("tag-list"),
+            {"name": "Test"},
+            format="json",
         )
         assert response.status_code == HTTPStatus.FORBIDDEN
 
     def test_create_tag_unauthenticated_returns_401(self) -> None:
         response = APIClient().post(
-            reverse("tag-list"), {"name": "Test"}, format="json",
+            reverse("tag-list"),
+            {"name": "Test"},
+            format="json",
         )
         assert response.status_code == HTTPStatus.UNAUTHORIZED
 

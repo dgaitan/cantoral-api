@@ -58,9 +58,7 @@ class TestVerseCreation:
 
     def test_no_code_fence_in_content(self) -> None:
         song = SongFactory.create()
-        lyrics_with_fence = (
-            "---\ntone: G\n---\n[verse]\n{G}\nLine one\n```\n"
-        )
+        lyrics_with_fence = "---\ntone: G\n---\n[verse]\n{G}\nLine one\n```\n"
         parsed = LyricsParser(lyrics_with_fence).parse()
         sync_song_verses(song, parsed)
         verse = song.verses.first()

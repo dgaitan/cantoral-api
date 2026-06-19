@@ -3,13 +3,43 @@ from __future__ import annotations
 import re
 
 _ENGLISH_TONES = {
-    "C", "C#", "Db", "D", "D#", "Eb", "E", "F",
-    "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B",
+    "C",
+    "C#",
+    "Db",
+    "D",
+    "D#",
+    "Eb",
+    "E",
+    "F",
+    "F#",
+    "Gb",
+    "G",
+    "G#",
+    "Ab",
+    "A",
+    "A#",
+    "Bb",
+    "B",
 }
 
 _SPANISH_MAJOR_TONES = {
-    "Do", "Do#", "Reb", "Re", "Re#", "Mib", "Mi", "Fa",
-    "Fa#", "Solb", "Sol", "Sol#", "Lab", "La", "La#", "Sib", "Si",
+    "Do",
+    "Do#",
+    "Reb",
+    "Re",
+    "Re#",
+    "Mib",
+    "Mi",
+    "Fa",
+    "Fa#",
+    "Solb",
+    "Sol",
+    "Sol#",
+    "Lab",
+    "La",
+    "La#",
+    "Sib",
+    "Si",
 }
 
 # Spanish minor chords are written with an "m" suffix (Mim, Lam, ...).
@@ -30,7 +60,7 @@ def _parse_frontmatter(text: str) -> tuple[dict[str, str], str]:
         msg = "Lyric frontmatter is missing. Add '---\\ntone: <note>\\n---' at the top."
         raise ValueError(msg)
     raw = match.group(1)
-    body = text[match.end():]
+    body = text[match.end() :]
     fields: dict[str, str] = {}
     for line in raw.splitlines():
         if ":" in line:

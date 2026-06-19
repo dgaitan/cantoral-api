@@ -31,7 +31,9 @@ class User(AbstractUser):
 
 class EmailToken(models.Model):
     user = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="email_tokens",
+        User,
+        on_delete=models.CASCADE,
+        related_name="email_tokens",
     )
     token = models.CharField(max_length=6)
     expires_at = models.DateTimeField()

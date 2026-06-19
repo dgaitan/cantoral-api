@@ -62,7 +62,9 @@ class SongViewSet(BaseViewSet):
             )
         except ValueError as exc:
             return ApiResponse(
-                errors=[str(exc)], success=False, status=status.HTTP_400_BAD_REQUEST,
+                errors=[str(exc)],
+                success=False,
+                status=status.HTTP_400_BAD_REQUEST,
             )
         page = self.paginate_queryset(queryset)
         if page is not None:
@@ -107,7 +109,8 @@ class SongViewSet(BaseViewSet):
     def update(self, request: Request, pk: str | None = None) -> ApiResponse:
         song = self.get_object()
         serializer = SongWriteSerializer(
-            data=request.data, context={"song_instance": song},
+            data=request.data,
+            context={"song_instance": song},
         )
         if not serializer.is_valid():
             return ApiResponse(
@@ -138,7 +141,9 @@ class SongViewSet(BaseViewSet):
     def partial_update(self, request: Request, pk: str | None = None) -> ApiResponse:
         song = self.get_object()
         serializer = SongWriteSerializer(
-            data=request.data, partial=True, context={"song_instance": song},
+            data=request.data,
+            partial=True,
+            context={"song_instance": song},
         )
         if not serializer.is_valid():
             return ApiResponse(
