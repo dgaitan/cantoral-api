@@ -15,7 +15,12 @@ class TagSerializer(serializers.ModelSerializer[Tag]):
 
 
 class TagWriteSerializer(SlugAutoGenerateMixin, serializers.ModelSerializer[Tag]):
-    slug = serializers.SlugField(required=False, allow_blank=True, default="", max_length=255)
+    slug = serializers.SlugField(
+        required=False,
+        allow_blank=True,
+        default="",
+        max_length=255,
+    )
     parent_id = serializers.PrimaryKeyRelatedField(
         queryset=Tag.objects.all(),
         source="parent",
@@ -35,7 +40,9 @@ class TagWriteSerializer(SlugAutoGenerateMixin, serializers.ModelSerializer[Tag]
             if self.instance:
                 qs = qs.exclude(pk=self.instance.pk)
             if qs.exists():
-                raise serializers.ValidationError({"slug": "Tag with this slug already exists."})
+                raise serializers.ValidationError(
+                    {"slug": "Tag with this slug already exists."},
+                )
         return data
 
 
@@ -46,7 +53,12 @@ class AuthorSerializer(serializers.ModelSerializer[Author]):
 
 
 class AuthorWriteSerializer(SlugAutoGenerateMixin, serializers.ModelSerializer[Author]):
-    slug = serializers.SlugField(required=False, allow_blank=True, default="", max_length=255)
+    slug = serializers.SlugField(
+        required=False,
+        allow_blank=True,
+        default="",
+        max_length=255,
+    )
 
     class Meta:
         model = Author
@@ -84,7 +96,8 @@ class SongSerializer(serializers.ModelSerializer[Song]):
         if cached is not None:
             return cached
         result = Favorite.objects.filter(
-            user_id=request.user.pk, song_id=obj.pk,
+            user_id=request.user.pk,
+            song_id=obj.pk,
         ).exists()
         cache.set(cache_key, result, timeout=3600)
         return result
@@ -106,10 +119,17 @@ class SongSerializer(serializers.ModelSerializer[Song]):
 
 class SongWriteSerializer(SlugAutoGenerateMixin, serializers.Serializer):
     name = serializers.CharField(min_length=1, max_length=255)
-    slug = serializers.SlugField(required=False, allow_blank=True, default="", max_length=255)
+    slug = serializers.SlugField(
+        required=False,
+        allow_blank=True,
+        default="",
+        max_length=255,
+    )
     authors = serializers.ListField(child=serializers.IntegerField(), min_length=1)
     tags = serializers.ListField(
-        child=serializers.IntegerField(), required=False, default=list,
+        child=serializers.IntegerField(),
+        required=False,
+        default=list,
     )
     lyrics = serializers.CharField()
 

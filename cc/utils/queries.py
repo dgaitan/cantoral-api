@@ -1,15 +1,18 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Self, List
-from django.db.models import QuerySet
+from typing import TYPE_CHECKING, Any, Self
 
 if TYPE_CHECKING:
     from typing import TypeVar
+
+    from django.db.models import QuerySet
+
     T = TypeVar("T")
+
 
 class BaseQuerySet:
     queryset: QuerySet[T]
-    available_filters: List[str] = []
+    available_filters: list[str] = []
     filters: dict[str, Any] = {}
 
     def __init__(self):
@@ -17,7 +20,8 @@ class BaseQuerySet:
         self.queryset = self.base_queryset()
 
     def base_queryset(self) -> QuerySet[T]:
-        raise NotImplementedError("base_queryset method must be implemented")
+        msg = "base_queryset method must be implemented"
+        raise NotImplementedError(msg)
 
     def get_queryset(self) -> QuerySet[T]:
         return self.queryset
@@ -36,10 +40,19 @@ class BaseQuerySet:
                 continue
             # QueryDict unpacks values as lists; take the last element
             if isinstance(filter_value, list):
-                filter_value = filter_value[-1] if filter_value else None
-            if filter_value is None:
+                normalized_filter_value = filter_value[-1] if filter_value else None
+            else:
+                normalized_filter_value = filter_value
+            if normalized_filter_value is None:
                 continue
-            if isinstance(filter_value, str) and filter_value.strip() == "":
+            if (
+                isinstance(normalized_filter_value, str)
+                and normalized_filter_value.strip() == ""
+            ):
                 continue
-            self.filters[filter_name] = filter_value.strip() if isinstance(filter_value, str) else filter_value
+            self.filters[filter_name] = (
+                normalized_filter_value.strip()
+                if isinstance(normalized_filter_value, str)
+                else normalized_filter_value
+            )
         return self

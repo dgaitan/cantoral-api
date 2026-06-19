@@ -8,14 +8,12 @@ from rest_framework.test import APIClient
 
 from cc.songs.models import Author
 from cc.songs.tests.api.base import AuthenticatedApiTest
-from cc.songs.tests.factories import AuthorFactory
-from cc.songs.tests.factories import SongFactory
+from cc.songs.tests.factories import AuthorFactory, SongFactory
 
 pytestmark = pytest.mark.django_db
 
 
 class TestAuthorsCrud(AuthenticatedApiTest):
-
     # ── List ──────────────────────────────────────────────────────────────────
 
     def test_list_all_authors_returns_200_with_all_authors(self) -> None:
@@ -104,13 +102,17 @@ class TestAuthorsCrud(AuthenticatedApiTest):
     def test_create_author_without_permission_returns_403(self) -> None:
         client = self._auth_client(can_create_songs=False)
         response = client.post(
-            reverse("author-list"), {"name": "Test"}, format="json"
+            reverse("author-list"),
+            {"name": "Test"},
+            format="json",
         )
         assert response.status_code == HTTPStatus.FORBIDDEN
 
     def test_create_author_unauthenticated_returns_401(self) -> None:
         response = APIClient().post(
-            reverse("author-list"), {"name": "Test"}, format="json"
+            reverse("author-list"),
+            {"name": "Test"},
+            format="json",
         )
         assert response.status_code == HTTPStatus.UNAUTHORIZED
 
@@ -260,6 +262,6 @@ class TestAuthorsCrud(AuthenticatedApiTest):
     def test_delete_unauthenticated_returns_401(self) -> None:
         author = AuthorFactory.create()
         response = APIClient().delete(
-            reverse("author-detail", kwargs={"pk": author.pk})
+            reverse("author-detail", kwargs={"pk": author.pk}),
         )
         assert response.status_code == HTTPStatus.UNAUTHORIZED

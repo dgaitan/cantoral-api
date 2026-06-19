@@ -5,13 +5,13 @@ import textwrap
 
 import pytest
 
-from cc.songs.importer import ImportSongsService
-from cc.songs.importer import InlineChordConverter
-from cc.songs.importer import LyricsConverter
-from cc.songs.importer import PostgresSqlDumpParser
-from cc.songs.models import Author
-from cc.songs.models import Song
-from cc.songs.models import Tag
+from cc.songs.importer import (
+    ImportSongsService,
+    InlineChordConverter,
+    LyricsConverter,
+    PostgresSqlDumpParser,
+)
+from cc.songs.models import Author, Song, Tag
 from cc.users.tests.factories import UserFactory
 
 # ---------------------------------------------------------------------------
@@ -78,8 +78,11 @@ _VERSES_BLOCK = textwrap.dedent("""\
 """)  # noqa: E501
 
 _SQL_BLOCKS = [
-    _SONGS_BLOCK, _AUTHORS_BLOCK, _CATEGORIES_BLOCK,
-    _AUTHORS_SONGS_BLOCK, _CATEGORIES_SONGS_BLOCK,
+    _SONGS_BLOCK,
+    _AUTHORS_BLOCK,
+    _CATEGORIES_BLOCK,
+    _AUTHORS_SONGS_BLOCK,
+    _CATEGORIES_SONGS_BLOCK,
 ]
 _SQL_NO_VERSES = "\n".join(_SQL_BLOCKS)
 _SQL_WITH_VERSES = f"{_SQL_NO_VERSES}\n{_VERSES_BLOCK}"
@@ -89,10 +92,11 @@ _SQL_WITH_VERSES = f"{_SQL_NO_VERSES}\n{_VERSES_BLOCK}"
 # Unit tests — PostgresSqlDumpParser
 # ---------------------------------------------------------------------------
 
+
 class TestPostgresSqlDumpParser:
     def test_parse_table_extracts_rows(self):
         rows = PostgresSqlDumpParser().parse_table(_AUTHORS_BLOCK, "authors")
-        assert len(rows) == 2  # noqa: PLR2004
+        assert len(rows) == 2
         assert rows[0]["name"] == "John Doe"
         assert rows[1]["name"] == "Jane Smith"
 
@@ -110,6 +114,7 @@ class TestPostgresSqlDumpParser:
 # Unit tests — InlineChordConverter
 # ---------------------------------------------------------------------------
 
+
 class TestInlineChordConverter:
     def test_inline_chord_no_chords(self):
         line = "plain text no chords"
@@ -118,7 +123,7 @@ class TestInlineChordConverter:
     def test_inline_chord_single_chord(self):
         result = InlineChordConverter.convert_line("text[C] more")
         lines = result.split("\n")
-        assert len(lines) == 2  # noqa: PLR2004
+        assert len(lines) == 2
         assert "{C}" in lines[0]
         assert lines[1] == "text more"
 
@@ -149,12 +154,17 @@ class TestInlineChordConverter:
 # Unit tests — LyricsConverter.from_verses
 # ---------------------------------------------------------------------------
 
+
 class TestLyricsConverterFromVerses:
     def _row(self, order: int, verse_type: str, content: str) -> dict:
         return {
-            "id": "1", "created_at": None, "updated_at": None,
-            "song_id": "1", "order": str(order),
-            "verse_type": verse_type, "content": content,
+            "id": "1",
+            "created_at": None,
+            "updated_at": None,
+            "song_id": "1",
+            "order": str(order),
+            "verse_type": verse_type,
+            "content": content,
         }
 
     def test_maps_verse_type_to_section(self):
@@ -171,7 +181,7 @@ class TestLyricsConverterFromVerses:
     def test_intro_maps_to_verse(self):
         rows = [self._row(1, "4", "intro text"), self._row(2, "5", "outro text")]
         result = LyricsConverter.from_verses(rows)
-        assert result.count("[verse]") == 2  # noqa: PLR2004
+        assert result.count("[verse]") == 2
         assert "[intro]" not in result
         assert "[outro]" not in result
 
@@ -193,6 +203,7 @@ class TestLyricsConverterFromVerses:
 # ---------------------------------------------------------------------------
 # Unit tests — LyricsConverter.from_lyrics_json
 # ---------------------------------------------------------------------------
+
 
 class TestLyricsConverterFromLyricsJson:
     def test_strips_html_tags(self):
@@ -225,6 +236,7 @@ class TestLyricsConverterFromLyricsJson:
 # ---------------------------------------------------------------------------
 # Integration tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def admin_user(db):
@@ -263,8 +275,8 @@ class TestImportSongsService:
 
     def test_import_creates_songs(self, sql_file_no_verses, admin_user):
         stats = _svc(sql_file_no_verses, admin_user.email).dispatch()
-        assert stats["songs"] == 2  # noqa: PLR2004
-        assert Song.objects.count() == 2  # noqa: PLR2004
+        assert stats["songs"] == 2
+        assert Song.objects.count() == 2
 
     def test_import_skips_deleted_songs(self, sql_file_no_verses, admin_user):
         _svc(sql_file_no_verses, admin_user.email).dispatch()
@@ -273,7 +285,7 @@ class TestImportSongsService:
     def test_import_links_authors_to_songs(self, sql_file_no_verses, admin_user):
         _svc(sql_file_no_verses, admin_user.email).dispatch()
         song = Song.objects.get(name="Song One")
-        assert song.authors.count() == 2  # noqa: PLR2004
+        assert song.authors.count() == 2
 
     def test_import_links_tags_to_songs(self, sql_file_no_verses, admin_user):
         _svc(sql_file_no_verses, admin_user.email).dispatch()
@@ -282,7 +294,7 @@ class TestImportSongsService:
 
     def test_import_dry_run_creates_nothing(self, sql_file_no_verses, admin_user):
         stats = _svc(sql_file_no_verses, admin_user.email, dry_run=True).dispatch()
-        assert stats["songs"] == 2  # noqa: PLR2004
+        assert stats["songs"] == 2
         assert Song.objects.count() == 0
         assert Author.objects.count() == 0
 
@@ -328,7 +340,11 @@ class TestImportSongsService:
         assert Song.objects.get(name="Song One").slug == "song-one"
         assert Song.objects.get(name="Song Two").slug == "song-two"
 
-    def test_import_falls_back_to_slugified_name_when_slug_null(self, tmp_path, admin_user):
+    def test_import_falls_back_to_slugified_name_when_slug_null(
+        self,
+        tmp_path,
+        admin_user,
+    ):
         # Row with \N (NULL) in the slug column — importer must derive from name.
         row = (
             r"\N" + "\t1\t2024-01-01\t2024-01-01\tt\tf\tMy Test Song\t"
@@ -337,10 +353,7 @@ class TestImportSongsService:
             r'[{"type":"verse","data":{"content":"<p>Hello</p>"}}]'
             "\t" + r"\N\t\N\t\N\t\N\t\N\t\N\t\N\t\N\t0\t0\t0\t\N\t\N\t\N"
         )
-        songs_block = (
-            f"COPY public.songs ({_SONGS_COLS}) FROM stdin;\n"
-            f"{row}\n" + r"\."
-        )
+        songs_block = f"COPY public.songs ({_SONGS_COLS}) FROM stdin;\n{row}\n" + r"\."
         sql = f"{songs_block}\n{_AUTHORS_BLOCK}\n{_CATEGORIES_BLOCK}\n"
         sql += f"{_AUTHORS_SONGS_BLOCK}\n{_CATEGORIES_SONGS_BLOCK}"
         f = tmp_path / "null_slug.sql"

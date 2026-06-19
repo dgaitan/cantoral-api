@@ -8,9 +8,7 @@ from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from cc.songs.models import Song
-from cc.songs.tests.factories import AuthorFactory
-from cc.songs.tests.factories import SongFactory
-from cc.songs.tests.factories import TagFactory
+from cc.songs.tests.factories import AuthorFactory, SongFactory, TagFactory
 from cc.users.tests.factories import UserFactory
 
 pytestmark = pytest.mark.django_db

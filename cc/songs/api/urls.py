@@ -1,8 +1,6 @@
 from rest_framework.routers import SimpleRouter
 
-from cc.songs.api.views import AuthorViewSet
-from cc.songs.api.views import SongViewSet
-from cc.songs.api.views import TagViewSet
+from cc.songs.api.views import AuthorViewSet, SongViewSet, TagViewSet
 
 router = SimpleRouter()
 router.register("songs", SongViewSet, basename="song")

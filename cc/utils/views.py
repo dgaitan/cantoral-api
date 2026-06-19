@@ -30,6 +30,7 @@ class BaseViewSet(GenericViewSet):
             return [cls() for cls in classes]
         return super().get_throttles()
 
+
 class PublicReadCrudViewSet(GenericViewSet):
     """Base viewset: read actions are public; writes require CanCreateSongs.
 
@@ -85,7 +86,8 @@ class PublicReadCrudViewSet(GenericViewSet):
             )
         obj = serializer.save()
         return ApiResponse(
-            data=self.read_serializer_class(obj).data, status=status.HTTP_200_OK,
+            data=self.read_serializer_class(obj).data,
+            status=status.HTTP_200_OK,
         )
 
     def partial_update(self, request: Request, pk: str | None = None) -> ApiResponse:
@@ -99,7 +101,8 @@ class PublicReadCrudViewSet(GenericViewSet):
             )
         obj = serializer.save()
         return ApiResponse(
-            data=self.read_serializer_class(obj).data, status=status.HTTP_200_OK,
+            data=self.read_serializer_class(obj).data,
+            status=status.HTTP_200_OK,
         )
 
     def destroy(self, request: Request, pk: str | None = None) -> Response:

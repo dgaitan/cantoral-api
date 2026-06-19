@@ -7,15 +7,17 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
 from cc.songs.api.serializers import SongSerializer
-from cc.songs.models import Song
 from cc.songs.queries import SongQuerySet
 from cc.users.api.serializers import ProfileSerializer
 from cc.utils.pagination import ApiPageNumberPagination
 from cc.utils.responses import ApiResponse
+
 if TYPE_CHECKING:
     from django.db.models import QuerySet
     from rest_framework.request import Request
     from rest_framework.response import Response
+
+    from cc.songs.models import Song
 
 
 class ProfileView(APIView):
@@ -42,9 +44,15 @@ class FavoriteSongsView(APIView):
 
     def get(self, request: Request) -> ApiResponse | Response:
         try:
-            qs: QuerySet[Song] = SongQuerySet().with_filters(**request.query_params).get_queryset()
+            qs: QuerySet[Song] = (
+                SongQuerySet().with_filters(**request.query_params).get_queryset()
+            )
         except ValueError as exc:
-            return ApiResponse(errors=[str(exc)], success=False, status=status.HTTP_400_BAD_REQUEST)
+            return ApiResponse(
+                errors=[str(exc)],
+                success=False,
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         qs = qs.filter(favorites__user=request.user).order_by("-favorites__created_at")
         paginator = ApiPageNumberPagination()
         page = paginator.paginate_queryset(qs, request)

@@ -5,8 +5,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from django.urls import reverse
-from rest_framework.test import APIClient
-from rest_framework.test import APIRequestFactory
+from rest_framework.test import APIClient, APIRequestFactory
 
 from cc.users.api.views import UserViewSet
 from cc.users.tests.factories import UserFactory

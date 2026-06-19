@@ -6,7 +6,7 @@ from cc.users.tests.factories import UserFactory
 
 
 class AuthenticatedApiTest:
-    def _auth_client(self, can_create_songs: bool = True) -> APIClient:
+    def _auth_client(self, *, can_create_songs: bool = True) -> APIClient:
         user = UserFactory.create(can_create_songs=can_create_songs)
         client = APIClient()
         client.force_authenticate(user=user)

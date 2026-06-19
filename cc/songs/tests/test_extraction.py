@@ -57,8 +57,7 @@ class TestParseExtractionResponse:
 
     def test_parses_fenced_json(self) -> None:
         payload = (
-            '```json\n{"name": "Test", "plain_lyrics": '
-            '"---\\ntone: G\\n---\\n"}\n```'
+            '```json\n{"name": "Test", "plain_lyrics": "---\\ntone: G\\n---\\n"}\n```'
         )
         result = parse_extraction_response(payload)
         assert result["name"] == "Test"
@@ -151,7 +150,8 @@ class TestGeminiAgent:
         assert result == _VALID_RESPONSE_JSON
         mock_download.assert_called_once_with("https://example.com/img.jpg")
         mock_types.Part.from_bytes.assert_called_once_with(
-            data=b"data", mime_type="image/jpeg",
+            data=b"data",
+            mime_type="image/jpeg",
         )
         call_kwargs = mock_client.models.generate_content.call_args.kwargs
         assert call_kwargs["contents"] == ["prompt", mock_part]
@@ -189,7 +189,8 @@ class TestChordSheetExtractor:
             '"plain_lyrics": "---\\ntone: G\\n---\\n[verse]\\nLine\\n"}'
         )
         result = ChordSheetExtractor(
-            "https://example.com/img.jpg", stub_agent,
+            "https://example.com/img.jpg",
+            stub_agent,
         ).extract()
 
         assert result["name"] == "Test"

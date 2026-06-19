@@ -16,8 +16,7 @@ class SlugAutoGenerateMixin:
             if not data.get("slug"):
                 name = data.get("name") or (instance.name if instance else "")
                 data["slug"] = slugify(name)
-        else:
-            if "slug" in data and not data["slug"]:
-                name = data.get("name") or (instance.name if instance else "")
-                data["slug"] = slugify(name)
+        elif "slug" in data and not data["slug"]:
+            name = data.get("name") or (instance.name if instance else "")
+            data["slug"] = slugify(name)
         return data
