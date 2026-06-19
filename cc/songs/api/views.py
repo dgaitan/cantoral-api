@@ -18,9 +18,10 @@ from cc.songs.api.serializers import (
     TagWriteSerializer,
     TransportSerializer,
 )
-from cc.songs.filters import AuthorFTSFilter, SongFTSFilter, TagFTSFilter
+from cc.songs.filters import AuthorFTSFilter, TagFTSFilter
 from cc.songs.lyrics.transport import ChordTransposer
 from cc.songs.models import Author, Song, Tag
+from cc.songs.queries import SongQuerySet
 from cc.songs.services import (
     CreateSongService,
     PublishSongService,
@@ -29,31 +30,31 @@ from cc.songs.services import (
 )
 from cc.utils.pagination import ApiPageNumberPagination
 from cc.utils.responses import ApiResponse
-from cc.utils.views import PublicReadCrudViewSet
-from cc.songs.queries import SongQuerySet
+from cc.utils.throttles import FavoriteToggleThrottle
+from cc.utils.views import PublicReadCrudViewSet, BaseViewSet
 
 if TYPE_CHECKING:
     from django.db.models import QuerySet
     from rest_framework.request import Request
 
 
-class SongViewSet(GenericViewSet):
+class SongViewSet(BaseViewSet):
     queryset = SongQuerySet().get_queryset()
-    permission_classes = [IsAuthenticated]
+    permission_classes_mapping = {
+        "retrieve": [AllowAny],
+        "list": [AllowAny],
+        "create": [CanCreateSongs],
+        "update": [CanCreateSongs],
+        "partial_update": [CanCreateSongs],
+        "destroy": [CanCreateSongs],
+        "publish": [CanPublishSongs],
+        "transport": [AllowAny],
+        "favorites": [IsAuthenticated],
+    }
+    throttle_classes_mapping = {
+        "favorites": [FavoriteToggleThrottle],
+    }
     pagination_class = ApiPageNumberPagination
-
-    def get_permissions(self):  # type: ignore[override]
-        if self.action in ("retrieve", "list"):
-            return [AllowAny()]
-        if self.action in ("create", "update", "partial_update", "destroy"):
-            return [CanCreateSongs()]
-        if self.action == "publish":
-            return [CanPublishSongs()]
-        if self.action == "transport":
-            return [AllowAny()]
-        if self.action == "favorites":
-            return [IsAuthenticated()]
-        return super().get_permissions()
 
     def list(self, request: Request) -> ApiResponse | Response:
         try:

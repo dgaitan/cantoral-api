@@ -3,6 +3,8 @@ from __future__ import annotations
 from http import HTTPStatus
 
 import pytest
+from django.core.cache import cache
+from django.test import override_settings
 from django.urls import reverse
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -208,3 +210,116 @@ class TestListFavorites:
         response = client.get(reverse("profile-favorites"))
 
         assert response.status_code == HTTPStatus.UNAUTHORIZED
+
+
+class TestIsFavoritedFlag:
+    @pytest.fixture(autouse=True)
+    def clear_cache(self) -> None:
+        cache.clear()
+
+    def test_is_favorited_true_when_user_has_favorited(self) -> None:
+        user = UserFactory.create(is_active=True)
+        song = SongFactory.create(is_public=True)
+        Favorite.objects.create(user=user, song=song)
+        client = _auth_client(user)
+
+        response = client.get(reverse("song-detail", kwargs={"pk": song.pk}))
+
+        assert response.status_code == HTTPStatus.OK
+        assert response.data["data"]["is_favorited"] is True
+
+    def test_is_favorited_false_when_user_has_not_favorited(self) -> None:
+        user = UserFactory.create(is_active=True)
+        song = SongFactory.create(is_public=True)
+        client = _auth_client(user)
+
+        response = client.get(reverse("song-detail", kwargs={"pk": song.pk}))
+
+        assert response.status_code == HTTPStatus.OK
+        assert response.data["data"]["is_favorited"] is False
+
+    def test_is_favorited_false_for_unauthenticated_user(self) -> None:
+        song = SongFactory.create(is_public=True)
+        client = APIClient()
+
+        response = client.get(reverse("song-detail", kwargs={"pk": song.pk}))
+
+        assert response.status_code == HTTPStatus.OK
+        assert response.data["data"]["is_favorited"] is False
+
+    def test_is_favorited_true_after_toggle_on(self) -> None:
+        user = UserFactory.create(is_active=True)
+        song = SongFactory.create(is_public=True)
+        client = _auth_client(user)
+
+        client.post(reverse("song-favorites", kwargs={"pk": song.pk}))
+        response = client.get(reverse("song-detail", kwargs={"pk": song.pk}))
+
+        assert response.status_code == HTTPStatus.OK
+        assert response.data["data"]["is_favorited"] is True
+
+    def test_is_favorited_false_after_toggle_off(self) -> None:
+        user = UserFactory.create(is_active=True)
+        song = SongFactory.create(is_public=True)
+        Favorite.objects.create(user=user, song=song)
+        client = _auth_client(user)
+
+        client.post(reverse("song-favorites", kwargs={"pk": song.pk}))
+        response = client.get(reverse("song-detail", kwargs={"pk": song.pk}))
+
+        assert response.status_code == HTTPStatus.OK
+        assert response.data["data"]["is_favorited"] is False
+
+    def test_is_favorited_correct_per_song_in_list(self) -> None:
+        user = UserFactory.create(is_active=True)
+        favorited = SongFactory.create(is_public=True)
+        not_favorited = SongFactory.create(is_public=True)
+        Favorite.objects.create(user=user, song=favorited)
+        client = _auth_client(user)
+
+        response = client.get(reverse("song-list"))
+
+        assert response.status_code == HTTPStatus.OK
+        results = {r["id"]: r for r in response.data["data"]["results"]}
+        assert results[favorited.pk]["is_favorited"] is True
+        assert results[not_favorited.pk]["is_favorited"] is False
+
+
+_THROTTLE_SETTINGS = {
+    "TEST_REQUEST_DEFAULT_FORMAT": "json",
+    "DEFAULT_THROTTLE_CLASSES": ["cc.utils.throttles.FavoriteToggleThrottle"],
+    "DEFAULT_THROTTLE_RATES": {"favorite_toggle": "4/min"},
+}
+
+
+class TestFavoriteToggleThrottle:
+    @pytest.fixture(autouse=True)
+    def clear_cache(self) -> None:
+        cache.clear()
+
+    def test_fifth_request_to_same_song_returns_429(self) -> None:
+        user = UserFactory.create(is_active=True)
+        song = SongFactory.create()
+        client = _auth_client(user)
+        url = reverse("song-favorites", kwargs={"pk": song.pk})
+
+        with override_settings(REST_FRAMEWORK=_THROTTLE_SETTINGS):
+            for _ in range(4):
+                response = client.post(url)
+                assert response.status_code == HTTPStatus.OK
+
+            response = client.post(url)
+            assert response.status_code == HTTPStatus.TOO_MANY_REQUESTS
+
+    def test_limit_is_per_song_not_global(self) -> None:
+        user = UserFactory.create(is_active=True)
+        song_a = SongFactory.create()
+        song_b = SongFactory.create()
+        client = _auth_client(user)
+
+        with override_settings(REST_FRAMEWORK=_THROTTLE_SETTINGS):
+            for _ in range(4):
+                client.post(reverse("song-favorites", kwargs={"pk": song_a.pk}))
+
+            response = client.post(reverse("song-favorites", kwargs={"pk": song_b.pk}))
+            assert response.status_code == HTTPStatus.OK

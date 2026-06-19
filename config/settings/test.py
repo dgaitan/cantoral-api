@@ -3,8 +3,7 @@ With these settings, tests run faster.
 """
 
 from .base import *  # noqa: F403
-from .base import TEMPLATES
-from .base import env
+from .base import TEMPLATES, env
 
 # GENERAL
 # ------------------------------------------------------------------------------
@@ -41,7 +40,16 @@ REST_FRAMEWORK = {  # type: ignore[name-defined]
         "anon": "10000/minute",
         "user": "10000/minute",
         "auth": "10000/minute",  # use @override_settings to test actual limits
+        "favorite_toggle": "10000/minute",  # use @override_settings to test actual limits
     },
 }
+# CACHES
+# ------------------------------------------------------------------------------
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    },
+}
+
 # Your stuff...
 # ------------------------------------------------------------------------------

@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from django.conf import settings
+from django.core.cache import cache
 from django.db import transaction
 from django.utils.text import slugify
 
@@ -134,8 +135,13 @@ class ToggleFavoriteService:
         )
         if not created:
             favorite.delete()
-            return False
-        return True
+            result = False
+        else:
+            result = True
+        cache.set(
+            f"user_{self.user.pk}_favorited_song_{self.song.pk}", result, timeout=3600,
+        )
+        return result
 
 
 class CreateSongFromImageService:

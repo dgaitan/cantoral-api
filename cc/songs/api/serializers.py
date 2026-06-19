@@ -1,12 +1,10 @@
 from __future__ import annotations
 
+from django.core.cache import cache
 from rest_framework import serializers
 
-from cc.songs.lyrics.parser import VALID_TONES
-from cc.songs.lyrics.parser import LyricsParser
-from cc.songs.models import Author
-from cc.songs.models import Song
-from cc.songs.models import Tag
+from cc.songs.lyrics.parser import VALID_TONES, LyricsParser
+from cc.songs.models import Author, Favorite, Song, Tag
 from cc.utils.mixins import SlugAutoGenerateMixin
 
 
@@ -59,6 +57,7 @@ class SongSerializer(serializers.ModelSerializer[Song]):
     tags = TagSerializer(many=True, read_only=True)
     authors = AuthorSerializer(many=True, read_only=True)
     lyrics = serializers.SerializerMethodField()
+    is_favorited = serializers.SerializerMethodField()
 
     class Meta:
         model = Song
@@ -73,7 +72,22 @@ class SongSerializer(serializers.ModelSerializer[Song]):
             "tone",
             "is_public",
             "lyrics",
+            "is_favorited",
         ]
+
+    def get_is_favorited(self, obj: Song) -> bool:
+        request = self.context.get("request")
+        if request is None or not request.user.is_authenticated:
+            return False
+        cache_key = f"user_{request.user.pk}_favorited_song_{obj.pk}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+        result = Favorite.objects.filter(
+            user_id=request.user.pk, song_id=obj.pk,
+        ).exists()
+        cache.set(cache_key, result, timeout=3600)
+        return result
 
     def get_lyrics(self, obj: Song) -> dict:
         plain = self.context.get("override_plain_lyrics")

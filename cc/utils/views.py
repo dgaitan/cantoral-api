@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
-from rest_framework import serializers
-from rest_framework import status
-from rest_framework.permissions import AllowAny
+from rest_framework import serializers, status
+from rest_framework.permissions import AllowAny, BasePermission
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
@@ -15,7 +13,22 @@ from cc.utils.responses import ApiResponse
 
 if TYPE_CHECKING:
     from rest_framework.request import Request
+    from rest_framework.throttling import BaseThrottle
 
+
+class BaseViewSet(GenericViewSet):
+    permission_classes_mapping: ClassVar[dict[str, list[type[BasePermission]]]] = {}
+    throttle_classes_mapping: ClassVar[dict[str, list[type[BaseThrottle]]]] = {}
+
+    def get_permissions(self):
+        if classes := self.permission_classes_mapping.get(self.action):
+            return [cls() for cls in classes]
+        return super().get_permissions()
+
+    def get_throttles(self):
+        if classes := self.throttle_classes_mapping.get(self.action):
+            return [cls() for cls in classes]
+        return super().get_throttles()
 
 class PublicReadCrudViewSet(GenericViewSet):
     """Base viewset: read actions are public; writes require CanCreateSongs.
