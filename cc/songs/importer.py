@@ -11,9 +11,7 @@ from typing import TYPE_CHECKING
 from django.db import transaction
 from django.utils.text import slugify
 
-from cc.songs.models import Author
-from cc.songs.models import Song
-from cc.songs.models import Tag
+from cc.songs.models import Author, Song, Tag
 from cc.users.models import User
 
 if TYPE_CHECKING:

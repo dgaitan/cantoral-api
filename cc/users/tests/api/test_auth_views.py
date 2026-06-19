@@ -10,10 +10,8 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from cc.users.models import EmailToken
-from cc.users.models import User
-from cc.users.tests.factories import EmailTokenFactory
-from cc.users.tests.factories import UserFactory
+from cc.users.models import EmailToken, User
+from cc.users.tests.factories import EmailTokenFactory, UserFactory
 
 pytestmark = pytest.mark.django_db
 

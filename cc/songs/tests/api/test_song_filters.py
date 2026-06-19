@@ -6,9 +6,7 @@ import pytest
 from django.urls import reverse
 from rest_framework.test import APIClient
 
-from cc.songs.tests.factories import AuthorFactory
-from cc.songs.tests.factories import SongFactory
-from cc.songs.tests.factories import TagFactory
+from cc.songs.tests.factories import AuthorFactory, SongFactory, TagFactory
 
 pytestmark = pytest.mark.django_db
 
@@ -114,7 +112,7 @@ class TestSongFilters:
         song3.tags.add(tag1, tag2)
 
         response = APIClient().get(
-            reverse("song-list"), {"author_id": author1.pk, "tag_id": tag1.pk}
+            reverse("song-list"), {"author_id": author1.pk, "tag_id": tag1.pk},
         )
 
         assert response.status_code == HTTPStatus.OK
@@ -129,7 +127,7 @@ class TestSongFilters:
         song.authors.add(author1)
 
         response = APIClient().get(
-            reverse("song-list"), {"author_id": author1.pk, "tag_id": tag1.pk}
+            reverse("song-list"), {"author_id": author1.pk, "tag_id": tag1.pk},
         )
 
         assert response.status_code == HTTPStatus.OK
@@ -147,7 +145,7 @@ class TestSongFilters:
         song_b.authors.add(author2)
 
         response = APIClient().get(
-            reverse("song-list"), {"search": "Magna", "author_id": author1.pk}
+            reverse("song-list"), {"search": "Magna", "author_id": author1.pk},
         )
 
         assert response.status_code == HTTPStatus.OK
@@ -164,7 +162,7 @@ class TestSongFilters:
         song_b.tags.add(tag2)
 
         response = APIClient().get(
-            reverse("song-list"), {"search": "Sanctus", "tag_id": tag1.pk}
+            reverse("song-list"), {"search": "Sanctus", "tag_id": tag1.pk},
         )
 
         assert response.status_code == HTTPStatus.OK
@@ -204,7 +202,7 @@ class TestSongFilters:
         song.authors.add(author2)
 
         response = APIClient().get(
-            reverse("song-list"), {"search": "Kyrie", "author_id": author1.pk}
+            reverse("song-list"), {"search": "Kyrie", "author_id": author1.pk},
         )
 
         assert response.status_code == HTTPStatus.OK
@@ -214,7 +212,9 @@ class TestSongFilters:
 
     def test_filtered_results_are_paginated(self) -> None:
         author = AuthorFactory.create()
-        songs = SongFactory.create_batch(25)
+        total_songs = 25
+        page_size = 20
+        songs = SongFactory.create_batch(total_songs)
         for song in songs:
             song.authors.add(author)
 
@@ -222,8 +222,8 @@ class TestSongFilters:
 
         assert response.status_code == HTTPStatus.OK
         data = response.data["data"]
-        assert data["count"] == 25
-        assert len(data["results"]) == 20
+        assert data["count"] == total_songs
+        assert len(data["results"]) == page_size
         assert data["next"] is not None
 
     def test_filtering_requires_no_authentication(self) -> None:

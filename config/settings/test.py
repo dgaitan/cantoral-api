@@ -40,7 +40,7 @@ REST_FRAMEWORK = {  # type: ignore[name-defined]
         "anon": "10000/minute",
         "user": "10000/minute",
         "auth": "10000/minute",  # use @override_settings to test actual limits
-        "favorite_toggle": "10000/minute",  # use @override_settings to test actual limits
+        "favorite_toggle": "10000/minute",  # use @override_settings to test limits
     },
 }
 # CACHES

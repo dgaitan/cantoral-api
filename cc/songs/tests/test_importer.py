@@ -5,13 +5,13 @@ import textwrap
 
 import pytest
 
-from cc.songs.importer import ImportSongsService
-from cc.songs.importer import InlineChordConverter
-from cc.songs.importer import LyricsConverter
-from cc.songs.importer import PostgresSqlDumpParser
-from cc.songs.models import Author
-from cc.songs.models import Song
-from cc.songs.models import Tag
+from cc.songs.importer import (
+    ImportSongsService,
+    InlineChordConverter,
+    LyricsConverter,
+    PostgresSqlDumpParser,
+)
+from cc.songs.models import Author, Song, Tag
 from cc.users.tests.factories import UserFactory
 
 # ---------------------------------------------------------------------------
@@ -328,7 +328,9 @@ class TestImportSongsService:
         assert Song.objects.get(name="Song One").slug == "song-one"
         assert Song.objects.get(name="Song Two").slug == "song-two"
 
-    def test_import_falls_back_to_slugified_name_when_slug_null(self, tmp_path, admin_user):
+    def test_import_falls_back_to_slugified_name_when_slug_null(
+        self, tmp_path, admin_user,
+    ):
         # Row with \N (NULL) in the slug column — importer must derive from name.
         row = (
             r"\N" + "\t1\t2024-01-01\t2024-01-01\tt\tf\tMy Test Song\t"

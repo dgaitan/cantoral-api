@@ -30,12 +30,12 @@ class Command(BaseCommand):
                 parsed = LyricsParser(song.plain_lyrics).parse()
                 sync_song_verses(song, parsed)
                 synced += 1
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 self.stderr.write(f"  skip song {song.pk} ({song.name}): {exc}")
                 skipped += 1
 
         self.stdout.write(
             self.style.SUCCESS(
-                f"Done — {synced}/{total} synced, {skipped} skipped."
-            )
+                f"Done — {synced}/{total} synced, {skipped} skipped.",
+            ),
         )
