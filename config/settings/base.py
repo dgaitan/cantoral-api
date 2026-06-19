@@ -197,6 +197,7 @@ REST_FRAMEWORK = {
         "anon": "100/hour",
         "user": "1000/hour",
         "auth": "10/min",
+        "favorite_toggle": "4/min",
     },
 }
 

@@ -18,9 +18,10 @@ from cc.songs.api.serializers import (
     TagWriteSerializer,
     TransportSerializer,
 )
-from cc.songs.filters import AuthorFTSFilter, SongFTSFilter, TagFTSFilter
+from cc.songs.filters import AuthorFTSFilter, TagFTSFilter
 from cc.songs.lyrics.transport import ChordTransposer
 from cc.songs.models import Author, Song, Tag
+from cc.songs.queries import SongQuerySet
 from cc.songs.services import (
     CreateSongService,
     PublishSongService,
@@ -29,8 +30,8 @@ from cc.songs.services import (
 )
 from cc.utils.pagination import ApiPageNumberPagination
 from cc.utils.responses import ApiResponse
+from cc.utils.throttles import FavoriteToggleThrottle
 from cc.utils.views import PublicReadCrudViewSet
-from cc.songs.queries import SongQuerySet
 
 if TYPE_CHECKING:
     from django.db.models import QuerySet
@@ -41,6 +42,11 @@ class SongViewSet(GenericViewSet):
     queryset = SongQuerySet().get_queryset()
     permission_classes = [IsAuthenticated]
     pagination_class = ApiPageNumberPagination
+
+    def get_throttles(self):  # type: ignore[override]
+        if self.action == "favorites":
+            return [FavoriteToggleThrottle()]
+        return super().get_throttles()
 
     def get_permissions(self):  # type: ignore[override]
         if self.action in ("retrieve", "list"):

@@ -281,9 +281,12 @@ Song objects have the shape:
   "lyrics": {
     "lyric": [...],
     "chords": [...]
-  }
+  },
+  "is_favorited": false
 }
 ```
+
+`is_favorited` — `true` if the authenticated user has favorited this song, `false` otherwise. Always `false` for unauthenticated requests.
 
 ---
 
