@@ -199,6 +199,17 @@ class TestLyricsConverterFromVerses:
         result = LyricsConverter.from_verses([], default_tone="G")
         assert "tone: G" in result
 
+    def test_wraps_text_lines_with_p_tags(self):
+        rows = [self._row(1, "1", "plain line")]
+        result = LyricsConverter.from_verses(rows)
+        assert "<p>plain line</p>" in result
+
+    def test_does_not_wrap_chord_lines(self):
+        rows = [self._row(1, "1", "Porque[C] eres")]
+        result = LyricsConverter.from_verses(rows)
+        assert "<p>{C}" not in result
+        assert "<p>Porque eres</p>" in result
+
 
 # ---------------------------------------------------------------------------
 # Unit tests — LyricsConverter.from_lyrics_json
@@ -210,13 +221,26 @@ class TestLyricsConverterFromLyricsJson:
         section = {"type": "verse", "data": {"content": "<p>Hello world</p>"}}
         data = json.dumps([section])
         result = LyricsConverter.from_lyrics_json(data)
-        assert "<p>" not in result
-        assert "Hello world" in result
+        assert "<p>Hello world</p>" in result
+
+    def test_wraps_each_line_with_p_tags(self):
+        section = {"type": "verse", "data": {"content": "<p>Line one</p><p>Line two</p>"}}
+        result = LyricsConverter.from_lyrics_json(json.dumps([section]))
+        assert "<p>Line one</p>" in result
+        assert "<p>Line two</p>" in result
+
+    def test_separates_consecutive_p_blocks(self):
+        section = {"type": "verse", "data": {"content": "<p>A</p><p>B</p>"}}
+        result = LyricsConverter.from_lyrics_json(json.dumps([section]))
+        assert "<p>A</p>" in result
+        assert "<p>B</p>" in result
+        assert "AB" not in result
 
     def test_br_becomes_newline(self):
         data = json.dumps([{"type": "verse", "data": {"content": "line1<br>line2"}}])
         result = LyricsConverter.from_lyrics_json(data)
-        assert "line1\nline2" in result
+        assert "<p>line1</p>" in result
+        assert "<p>line2</p>" in result
 
     def test_none_returns_valid_frontmatter(self):
         result = LyricsConverter.from_lyrics_json(None)
@@ -334,6 +358,24 @@ class TestImportSongsService:
         assert stats["songs"] == 1
         assert stats["skipped"] == 1
         assert Song.objects.count() == 1
+
+    def test_import_upserts_song_by_slug(self, sql_file_no_verses, admin_user):
+        _svc(sql_file_no_verses, admin_user.email).dispatch()
+        assert Song.objects.count() == 2  # noqa: PLR2004
+        _svc(sql_file_no_verses, admin_user.email).dispatch()
+        assert Song.objects.count() == 2  # noqa: PLR2004
+
+    def test_import_updated_count_on_second_run(self, sql_file_no_verses, admin_user):
+        stats1 = _svc(sql_file_no_verses, admin_user.email).dispatch()
+        assert stats1["updated"] == 0
+        stats2 = _svc(sql_file_no_verses, admin_user.email).dispatch()
+        assert stats2["updated"] == 2  # noqa: PLR2004
+        assert stats2["songs"] == 2  # noqa: PLR2004
+
+    def test_import_preserves_authors_on_update(self, sql_file_no_verses, admin_user):
+        _svc(sql_file_no_verses, admin_user.email).dispatch()
+        _svc(sql_file_no_verses, admin_user.email).dispatch()
+        assert Song.objects.get(name="Song One").authors.count() == 2  # noqa: PLR2004
 
     def test_import_imports_slug_from_dump(self, sql_file_no_verses, admin_user):
         _svc(sql_file_no_verses, admin_user.email).dispatch()

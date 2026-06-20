@@ -6,15 +6,19 @@ import json
 import re
 from html.parser import HTMLParser
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from django.db import transaction
 from django.utils.text import slugify
 
+from cc.songs.lyrics.parser import LyricsParser
 from cc.songs.models import Author, Song, Tag
+from cc.songs.services import sync_song_verses
 from cc.users.models import User
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from django.core.management.base import OutputWrapper
 
 
@@ -44,11 +48,43 @@ class _HTMLStripper(HTMLParser):
         return "".join(self._parts)
 
 
+_SURROGATE_PAIR_RE = re.compile(
+    r"\\u([Dd][89AaBb][0-9A-Fa-f]{2})\\u([Dd][C-Fc-f][0-9A-Fa-f]{2})",
+)
+_UNICODE_ESCAPE_RE = re.compile(r"\\u([0-9A-Fa-f]{4})")
+_SURROGATE_LOW = 0xD800
+_SURROGATE_HIGH = 0xDFFF
+
+
+def _chr_bmp(hex4: str) -> str:
+    cp = int(hex4, 16)
+    return "" if _SURROGATE_LOW <= cp <= _SURROGATE_HIGH else chr(cp)
+
+
+def _decode_json_escapes(text: str) -> str:
+    text = _SURROGATE_PAIR_RE.sub(
+        lambda m: chr(
+            0x10000
+            + ((int(m.group(1), 16) - 0xD800) << 10)
+            + (int(m.group(2), 16) - 0xDC00),
+        ),
+        text,
+    )
+    text = _UNICODE_ESCAPE_RE.sub(lambda m: _chr_bmp(m.group(1)), text)
+    return text.replace("\\/", "/")
+
+
 def _strip_html(text: str) -> str:
+    text = _decode_json_escapes(text)
+    text = re.sub(r"</p\s*>", "\n", text, flags=re.IGNORECASE)
     text = re.sub(r"<br\s*/?>", "\n", text, flags=re.IGNORECASE)
     stripper = _HTMLStripper()
     stripper.feed(text)
     return html.unescape(stripper.result())
+
+
+def _wrap_lines_with_p(text: str) -> str:
+    return "\n".join(f"<p>{line}</p>" for line in text.splitlines() if line.strip())
 
 
 class PostgresSqlDumpParser:
@@ -121,9 +157,19 @@ class LyricsConverter:
         for row in sorted_rows:
             vtype = _VERSE_TYPE_MAP.get(str(row.get("verse_type") or "1"), "verse")
             content = row.get("content") or ""
-            converted = "\n".join(
-                InlineChordConverter.convert_line(ln) for ln in content.splitlines()
-            )
+            lines: list[str] = []
+            for ln in content.splitlines():
+                result = InlineChordConverter.convert_line(ln)
+                if "\n" in result:
+                    chord_part, text_part = result.split("\n", 1)
+                    lines.append(chord_part)
+                    if text_part.strip():
+                        lines.append(f"<p>{text_part}</p>")
+                elif result.strip():
+                    lines.append(f"<p>{result}</p>")
+                else:
+                    lines.append(result)
+            converted = "\n".join(lines)
             parts.append(f"[{vtype}]\n{converted}")
         return "\n\n".join(parts) + "\n"
 
@@ -142,7 +188,7 @@ class LyricsConverter:
             raw_type = section.get("type", "verse")
             vtype = raw_type if raw_type in ("verse", "chorus", "bridge") else "verse"
             raw_content: str = section.get("data", {}).get("content", "")
-            content = _strip_html(raw_content).strip()
+            content = _wrap_lines_with_p(_strip_html(raw_content).strip())
             parts.append(f"[{vtype}]\n{content}")
         return "\n\n".join(parts) + "\n"
 
@@ -235,6 +281,33 @@ def _convert_lyrics(
     return LyricsConverter.from_lyrics_json(row.get("lyrics"), default_tone)
 
 
+def _upsert_song(
+    slug: str,
+    data: dict[str, Any],
+    author_ids: list[int],
+    tag_ids: list[int],
+    warn: Callable[[str], None],
+) -> tuple[Song, bool]:
+    existing = Song.objects.filter(slug=slug)
+    if existing.exists():
+        existing.update(**data)
+        song = existing.first()
+        assert song is not None
+        created = False
+    else:
+        song = Song.objects.create(slug=slug, **data)
+        created = True
+    if author_ids:
+        song.authors.set(author_ids)
+    if tag_ids:
+        song.tags.set(tag_ids)
+    try:
+        sync_song_verses(song, LyricsParser(song.plain_lyrics).parse())
+    except Exception as exc:  # noqa: BLE001
+        warn(f"Could not sync verses for {song.name!r}: {exc}")
+    return song, created
+
+
 class ImportSongsService:
     def __init__(
         self,
@@ -294,7 +367,8 @@ class ImportSongsService:
             verses_by_song.setdefault(sid, []).append(vrow)
         use_verses = len(verses_rows) > 0
 
-        songs_count = 0
+        songs_created = 0
+        songs_updated = 0
         skipped = 0
         for row in songs_rows:
             if row.get("deleted_at") is not None:
@@ -313,21 +387,25 @@ class ImportSongsService:
 
             song_name = row["name"] or ""
             song_slug = row.get("slug") or slugify(song_name)
-            song = Song.objects.create(
-                name=song_name,
-                slug=song_slug,
-                plain_lyrics=plain_lyrics,
-                tone=self.default_tone,
-                is_public=row.get("is_public") == "t",
-                views=int(row.get("views") or 0),
-                created_by=user,
-            )
             sid = str(row["id"])
-            if song_authors.get(sid):
-                song.authors.set(song_authors[sid])
-            if song_tags.get(sid):
-                song.tags.set(song_tags[sid])
-            songs_count += 1
+            _, created = _upsert_song(
+                slug=song_slug,
+                data={
+                    "name": song_name,
+                    "plain_lyrics": plain_lyrics,
+                    "tone": self.default_tone,
+                    "is_public": row.get("is_public") == "t",
+                    "views": int(row.get("views") or 0),
+                    "created_by": user,
+                },
+                author_ids=song_authors.get(sid, []),
+                tag_ids=song_tags.get(sid, []),
+                warn=self._warn,
+            )
+            if created:
+                songs_created += 1
+            else:
+                songs_updated += 1
 
         if self.dry_run:
             transaction.set_rollback(True)
@@ -335,6 +413,7 @@ class ImportSongsService:
         return {
             "authors": len(author_map),
             "tags": len(tag_map),
-            "songs": songs_count,
+            "songs": songs_created + songs_updated,
+            "updated": songs_updated,
             "skipped": skipped,
         }
