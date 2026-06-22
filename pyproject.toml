@@ -13,18 +13,18 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-  "anthropic>=0.109.1",
+  "anthropic>=0.111.0",
   "argon2-cffi==25.1.0",
   "celery[redis]>=5.3.1",
   "django==6.0.6",
   "django-cors-headers==4.9.0",
-  "django-environ==0.13.0",
+  "django-environ==0.14.0",
   "django-model-utils==5.0.0",
   "django-redis==7.0.0",
   "djangorestframework==3.17.1",
-  "djangorestframework-simplejwt==5.5.0",
+  "djangorestframework-simplejwt==5.5.1",
   "drf-spectacular==0.29.0",
-  "google-genai>=2.8.0",
+  "google-genai>=2.9.0",
   "gunicorn==26.0.0",
   "hiredis==3.4.0",
   "psycopg[c]==3.3.4",
@@ -34,7 +34,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-  "coverage==7.14.1",
+  "coverage==7.14.2",
   "django-coverage-plugin==3.2.2",
   "django-debug-toolbar==6.3.0",
   "django-stubs[compatible-mypy]==6.0.5",
@@ -44,10 +44,10 @@ dev = [
   "mypy==2.1.0",
   "pre-commit==4.6.0",
   "psycopg[binary]==3.3.4",
-  "pytest==9.0.3",
+  "pytest==9.1.1",
   "pytest-django==4.12.0",
   "pytest-sugar==1.1.1",
-  "ruff==0.15.16",
+  "ruff==0.15.18",
 ]
 
 # ==== ruff ====
