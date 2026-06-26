@@ -196,7 +196,7 @@ class TestChordSheetExtractor:
         assert result["name"] == "Test"
         assert "tone: G" in result["plain_lyrics"]
         stub_agent.generate.assert_called_once()
-        prompt_arg, url_arg = stub_agent.generate.call_args.args
+        prompt_arg, url_arg, *_ = stub_agent.generate.call_args.args
         assert url_arg == "https://example.com/img.jpg"
         assert "chord" in prompt_arg.lower()
 
@@ -240,7 +240,7 @@ class TestCreateSongFromImageService:
         assert song.tone == "G"
         assert song.source_image_url == image_url
         assert song.verses.count() == _EXPECTED_SECTION_COUNT
-        mock_extractor_cls.assert_called_once_with(image_url, mock_agent)
+        mock_extractor_cls.assert_called_once_with(image_url, mock_agent, None)
 
     @patch("cc.songs.services.get_agent")
     @patch("cc.songs.services.ChordSheetExtractor")

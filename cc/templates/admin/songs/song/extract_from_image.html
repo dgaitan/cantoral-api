@@ -3,10 +3,10 @@
 {% block content %}
   <h1>Extract song from chord sheet image</h1>
   <p>
-    Paste a public image URL (for example an S3 chord sheet). Claude vision will
-    extract the title, lyrics, and chords into a draft song for review.
+    Paste a public image URL or upload an image file (JPEG, PNG, GIF, or WebP).
+    Claude vision will extract the title, lyrics, and chords into a draft song for review.
   </p>
-  <form method="post" novalidate>
+  <form method="post" enctype="multipart/form-data" novalidate>
     {% csrf_token %}
     <table>
       {{ form.as_table }}

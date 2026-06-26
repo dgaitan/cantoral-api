@@ -102,10 +102,20 @@ class SongAdminForm(forms.ModelForm):  # type: ignore[type-arg]
         return value
 
 
+_ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+_ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+
+
 class ExtractSongFromImageForm(forms.Form):
     image_url = forms.URLField(
         label="Image URL",
+        required=False,
         help_text="Public URL to a chord sheet image (JPEG, PNG, GIF, or WebP).",
+    )
+    image_file = forms.FileField(
+        label="Upload image",
+        required=False,
+        help_text="Upload a chord sheet image (JPEG, PNG, GIF, or WebP).",
     )
     name = forms.CharField(
         label="Song name (optional)",
@@ -122,6 +132,30 @@ class ExtractSongFromImageForm(forms.Form):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.fields["agent"].initial = django_settings.CHORD_EXTRACTION_DEFAULT_AGENT
+
+    def clean_image_file(self) -> Any:
+        uploaded = self.cleaned_data.get("image_file")
+        if not uploaded:
+            return uploaded
+        ext = "." + uploaded.name.rsplit(".", 1)[-1].lower() if "." in uploaded.name else ""
+        mime = (uploaded.content_type or "").split(";")[0].strip()
+        if ext not in _ALLOWED_IMAGE_EXTENSIONS and mime not in _ALLOWED_MIME_TYPES:
+            raise forms.ValidationError(
+                "Unsupported file type. Upload a JPEG, PNG, GIF, or WebP image."
+            )
+        return uploaded
+
+    def clean(self) -> dict[str, Any]:
+        cleaned: dict[str, Any] = super().clean() or {}
+        if not cleaned.get("image_url") and not cleaned.get("image_file"):
+            raise forms.ValidationError(
+                "Provide either an image URL or upload an image file."
+            )
+        if cleaned.get("image_url") and cleaned.get("image_file"):
+            raise forms.ValidationError(
+                "Provide either an image URL or an uploaded file, not both."
+            )
+        return cleaned
 
 
 @admin.register(Tag)
@@ -197,12 +231,19 @@ class SongAdmin(admin.ModelAdmin):  # type: ignore[type-arg]
         return custom_urls + urls
 
     def extract_from_image_view(self, request: HttpRequest) -> HttpResponse:
-        form = ExtractSongFromImageForm(request.POST or None)
+        form = ExtractSongFromImageForm(request.POST or None, request.FILES or None)
         if request.method == "POST" and form.is_valid():
             try:
+                image_url: str = form.cleaned_data.get("image_url") or ""
+                image_data: tuple[bytes, str] | None = None
+                uploaded = form.cleaned_data.get("image_file")
+                if uploaded:
+                    mime = (uploaded.content_type or "image/jpeg").split(";")[0].strip()
+                    image_data = (uploaded.read(), mime)
                 song = CreateSongFromImageService(
                     user=cast("User", request.user),
-                    image_url=form.cleaned_data["image_url"],
+                    image_url=image_url,
+                    image_data=image_data,
                     name=form.cleaned_data.get("name", ""),
                     agent=form.cleaned_data["agent"],
                 ).dispatch()

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import urllib.request
 from abc import ABC, abstractmethod
 from pathlib import PurePosixPath
@@ -56,20 +57,43 @@ def _download_image(url: str, timeout: int = 10) -> tuple[bytes, str]:
     return data, mime
 
 
+_ImageData = tuple[bytes, str]  # (raw bytes, mime type)
+
+
 class ExtractionAgent(ABC):
     name: str
 
     @abstractmethod
-    def generate(self, prompt: str, image_url: str) -> str: ...
+    def generate(
+        self,
+        prompt: str,
+        image_url: str | None,
+        image_data: _ImageData | None = None,
+    ) -> str: ...
 
 
 class AnthropicAgent(ExtractionAgent):
     name = "anthropic"
 
-    def generate(self, prompt: str, image_url: str) -> str:
+    def generate(
+        self,
+        prompt: str,
+        image_url: str | None,
+        image_data: _ImageData | None = None,
+    ) -> str:
         if not settings.ANTHROPIC_API_KEY:
             msg = "ANTHROPIC_API_KEY is not configured."
             raise ValueError(msg)
+
+        if image_data:
+            raw, mime = image_data
+            image_source: Any = {
+                "type": "base64",
+                "media_type": mime,
+                "data": base64.standard_b64encode(raw).decode(),
+            }
+        else:
+            image_source = {"type": "url", "url": image_url or ""}
 
         client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
         response = client.messages.create(
@@ -80,10 +104,7 @@ class AnthropicAgent(ExtractionAgent):
                     "role": "user",
                     "content": [
                         {"type": "text", "text": prompt},
-                        {
-                            "type": "image",
-                            "source": {"type": "url", "url": image_url},
-                        },
+                        {"type": "image", "source": image_source},
                     ],
                 },
             ],
@@ -100,12 +121,17 @@ class AnthropicAgent(ExtractionAgent):
 class GeminiAgent(ExtractionAgent):
     name = "gemini"
 
-    def generate(self, prompt: str, image_url: str) -> str:
+    def generate(
+        self,
+        prompt: str,
+        image_url: str | None,
+        image_data: _ImageData | None = None,
+    ) -> str:
         if not settings.GEMINI_API_KEY:
             msg = "GEMINI_API_KEY is not configured."
             raise ValueError(msg)
 
-        data, mime = _download_image(image_url)
+        data, mime = image_data if image_data else _download_image(image_url or "")
         client: Any = genai.Client(api_key=settings.GEMINI_API_KEY)
         response = client.models.generate_content(
             model=settings.GEMINI_VISION_MODEL,

@@ -154,14 +154,16 @@ class CreateSongFromImageService:
     def __init__(  # noqa: PLR0913
         self,
         user: User,
-        image_url: str,
+        image_url: str = "",
         name: str = "",
         agent: str = "",
         authors_ids: list[int] | None = None,
         tags_ids: list[int] | None = None,
+        image_data: tuple[bytes, str] | None = None,
     ) -> None:
         self.user = user
         self.image_url = image_url
+        self.image_data = image_data
         self.name = name
         self.agent = agent
         self.authors_ids = authors_ids or []
@@ -171,7 +173,11 @@ class CreateSongFromImageService:
     def dispatch(self) -> Song:
         agent_name = self.agent or settings.CHORD_EXTRACTION_DEFAULT_AGENT
         agent = get_agent(agent_name)
-        extracted = ChordSheetExtractor(self.image_url, agent).extract()
+        extracted = ChordSheetExtractor(
+            self.image_url or None,
+            agent,
+            self.image_data,
+        ).extract()
         plain_lyrics = extracted["plain_lyrics"]
         song = CreateSongService(
             user=self.user,
@@ -180,6 +186,7 @@ class CreateSongFromImageService:
             tags_ids=self.tags_ids,
             lyrics=plain_lyrics,
         ).dispatch()
-        song.source_image_url = self.image_url
-        song.save(update_fields=["source_image_url"])
+        if self.image_url:
+            song.source_image_url = self.image_url
+            song.save(update_fields=["source_image_url"])
         return song

@@ -71,10 +71,16 @@ def parse_extraction_response(text: str) -> dict[str, str]:
 
 
 class ChordSheetExtractor:
-    def __init__(self, image_url: str, agent: ExtractionAgent) -> None:
+    def __init__(
+        self,
+        image_url: str | None,
+        agent: ExtractionAgent,
+        image_data: tuple[bytes, str] | None = None,
+    ) -> None:
         self.image_url = image_url
+        self.image_data = image_data
         self.agent = agent
 
     def extract(self) -> dict[str, str]:
-        text = self.agent.generate(_EXTRACTION_PROMPT, self.image_url)
+        text = self.agent.generate(_EXTRACTION_PROMPT, self.image_url, self.image_data)
         return parse_extraction_response(text)

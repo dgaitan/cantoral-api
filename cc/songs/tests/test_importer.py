@@ -400,29 +400,28 @@ class TestImportSongsService:
         assert Song.objects.get(name="Song One").slug == "song-one"
         assert Song.objects.get(name="Song Two").slug == "song-two"
 
-    def test_import_updates_lyrics_when_slug_exists(self, sql_file_no_verses, admin_user):
-        # Pre-create a song with the same slug — importer should update lyrics, not duplicate
-        existing = SongFactory(slug="song-one", plain_lyrics="old lyrics", created_by=admin_user)
+    def test_import_replaces_existing_song_with_same_slug(self, sql_file_no_verses, admin_user):
+        # Pre-create a song with the same slug — importer deletes it and creates a fresh one
+        SongFactory(slug="song-one", plain_lyrics="old lyrics", created_by=admin_user)
         assert Song.objects.filter(slug="song-one").count() == 1
 
         _svc(sql_file_no_verses, admin_user.email).dispatch()
 
         assert Song.objects.filter(slug="song-one").count() == 1
-        existing.refresh_from_db()
-        assert existing.plain_lyrics != "old lyrics"
-        assert "Line one" in existing.plain_lyrics
+        song = Song.objects.get(slug="song-one")
+        assert song.plain_lyrics != "old lyrics"
+        assert "Line one" in song.plain_lyrics
 
-    def test_import_updates_all_duplicates_with_same_slug(self, sql_file_no_verses, admin_user):
-        # Slug is unique=False on Song — pre-existing duplicates must all be updated
-        dup1 = SongFactory(slug="song-one", plain_lyrics="old 1", created_by=admin_user)
-        dup2 = SongFactory(slug="song-one", plain_lyrics="old 2", created_by=admin_user)
+    def test_import_replaces_all_duplicates_with_same_slug(self, sql_file_no_verses, admin_user):
+        # Slug is unique=False — duplicate pre-existing songs are all deleted, one new one created
+        SongFactory(slug="song-one", plain_lyrics="old 1", created_by=admin_user)
+        SongFactory(slug="song-one", plain_lyrics="old 2", created_by=admin_user)
 
         _svc(sql_file_no_verses, admin_user.email).dispatch()
 
-        dup1.refresh_from_db()
-        dup2.refresh_from_db()
-        assert "Line one" in dup1.plain_lyrics
-        assert "Line one" in dup2.plain_lyrics
+        assert Song.objects.filter(slug="song-one").count() == 1
+        song = Song.objects.get(slug="song-one")
+        assert "Line one" in song.plain_lyrics
 
     def test_import_creates_song_when_slug_not_found(self, sql_file_no_verses, admin_user):
         assert not Song.objects.filter(slug="song-one").exists()
