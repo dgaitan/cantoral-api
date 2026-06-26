@@ -14,6 +14,7 @@ from cc.users.api.auth_views import (
     RegisterView,
     VerifyEmailTokenView,
 )
+from cc.playlists.api.views import ProfilePlaylistsView
 from cc.users.api.profile_views import (
     FavoriteSongsView,
     ProfileView,
@@ -36,11 +37,18 @@ urlpatterns = [
     path("api/auth/token/verify/", TokenVerifyView.as_view(), name="token_verify"),
     # Songs
     path("api/v1/", include("cc.songs.api.urls")),
+    # Playlists
+    path("api/v1/", include("cc.playlists.api.urls")),
     # Profile
     path(
         "api/v1/profile/favorites/",
         FavoriteSongsView.as_view(),
         name="profile-favorites",
+    ),
+    path(
+        "api/v1/profile/playlists/",
+        ProfilePlaylistsView.as_view(),
+        name="profile-playlists",
     ),
     path("api/v1/profile", ProfileView.as_view(), name="profile"),
     # API docs (admin-only)

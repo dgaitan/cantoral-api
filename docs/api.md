@@ -264,6 +264,265 @@ Each song in `results` has the standard song shape (see Songs section).
 
 ---
 
+### GET /api/v1/profile/playlists/
+
+List all playlists owned by the authenticated user (paginated).
+
+**Auth required:** Yes
+
+**Query params:**
+- `?page=N` — page number (default: 1)
+
+**Response 200:**
+```json
+{
+  "success": true,
+  "data": {
+    "count": 3,
+    "next": null,
+    "previous": null,
+    "results": [{ ...playlist }, ...]
+  }
+}
+```
+
+Each item has the standard playlist shape (see Playlists section).
+
+**Response 401:** Not authenticated.
+
+---
+
+## Playlists
+
+Playlist objects have the shape:
+
+```json
+{
+  "uuid": "550e8400-e29b-41d4-a716-446655440000",
+  "name": "Advent Songs",
+  "description": "Songs for the Advent season",
+  "is_public": true,
+  "is_collaborative": false,
+  "owner_id": 1,
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z"
+}
+```
+
+- `is_public` — visible to all users when `true`; only the owner can access it when `false`
+- `is_collaborative` — when `true`, any authenticated user can add/remove/reorder songs (not just the owner)
+- Playlists are soft-deleted: `DELETE` sets `deleted_at` and hides them from all queries
+
+---
+
+### GET /api/v1/playlists/
+
+List playlists (paginated).
+
+**Auth required:** No — unauthenticated users see only public playlists; authenticated users additionally see their own private playlists.
+
+**Query params:**
+- `?page=N` — page number (default: 1)
+- `?name=<query>` — case-insensitive substring match on playlist name
+- `?description=<query>` — case-insensitive substring match on description
+
+**Response 200:**
+```json
+{
+  "success": true,
+  "data": {
+    "count": 10,
+    "next": null,
+    "previous": null,
+    "results": [{ ...playlist }, ...]
+  }
+}
+```
+
+---
+
+### POST /api/v1/playlists/
+
+Create a new playlist.
+
+**Auth required:** Yes
+
+**Request body:**
+```json
+{
+  "name": "Advent Songs",
+  "description": "Songs for the Advent season",
+  "is_public": false,
+  "is_collaborative": false
+}
+```
+
+- `name` — required
+- `description` — optional; defaults to `""`
+- `is_public` — optional; defaults to `false`
+- `is_collaborative` — optional; defaults to `false`
+
+**Response 201:**
+```json
+{
+  "success": true,
+  "data": { ...playlist }
+}
+```
+
+**Response 400:** Validation error.
+**Response 401:** Not authenticated.
+
+---
+
+### GET /api/v1/playlists/{uuid}/
+
+Retrieve a single playlist by UUID.
+
+**Auth required:** No for public playlists; owner required for private playlists.
+
+**Response 200:**
+```json
+{
+  "success": true,
+  "data": { ...playlist }
+}
+```
+
+**Response 403:** Playlist is private and the requesting user is not the owner.
+**Response 404:** Playlist not found.
+
+---
+
+### POST /api/v1/playlists/{uuid}/
+
+Partial update of a playlist. Only the fields present in the request body are changed.
+
+**Auth required:** Yes — must be the playlist owner.
+
+**Request body:** Any subset of `name`, `description`, `is_public`, `is_collaborative`.
+
+**Response 200:**
+```json
+{
+  "success": true,
+  "data": { ...playlist }
+}
+```
+
+**Response 400:** Validation error.
+**Response 401:** Not authenticated.
+**Response 403:** Not the playlist owner.
+**Response 404:** Playlist not found.
+
+---
+
+### DELETE /api/v1/playlists/{uuid}/
+
+Soft-delete a playlist (sets `deleted_at`; hidden from all queries).
+
+**Auth required:** Yes — must be the playlist owner.
+
+**Response 204:** No content.
+
+**Response 401:** Not authenticated.
+**Response 403:** Not the playlist owner.
+**Response 404:** Playlist not found.
+
+---
+
+### GET /api/v1/playlists/{uuid}/songs/
+
+List the songs in a playlist, ordered by their position.
+
+**Auth required:** No for public playlists; owner required for private playlists.
+
+**Query params:**
+- `?page=N` — page number (default: 1)
+
+**Response 200:**
+```json
+{
+  "success": true,
+  "data": {
+    "count": 5,
+    "next": null,
+    "previous": null,
+    "results": [
+      { "order": 1, "song": { ...song } },
+      { "order": 2, "song": { ...song } }
+    ]
+  }
+}
+```
+
+Each `song` has the standard song shape (see Songs section).
+
+**Response 403:** Playlist is private and the requesting user is not the owner.
+**Response 404:** Playlist not found.
+
+---
+
+### POST /api/v1/playlists/{uuid}/songs/attach/
+
+Toggle songs in or out of a playlist. Songs not yet in the playlist are added; songs already in the playlist are removed. New songs are appended after the last existing position.
+
+**Auth required:** Yes — must be the playlist owner, or any authenticated user if the playlist is collaborative.
+
+**Request body:**
+```json
+{
+  "song_ids": [1, 2, 3]
+}
+```
+
+- `song_ids` — required; non-empty array of existing song IDs
+
+**Response 200:**
+```json
+{
+  "success": true,
+  "data": {}
+}
+```
+
+**Response 400:** Validation error or one or more song IDs not found.
+**Response 401:** Not authenticated.
+**Response 403:** Not the owner and playlist is not collaborative.
+**Response 404:** Playlist not found.
+
+---
+
+### POST /api/v1/playlists/{uuid}/songs/order/
+
+Reorder the songs in a playlist. The request must include every song currently in the playlist in the desired order.
+
+**Auth required:** Yes — must be the playlist owner, or any authenticated user if the playlist is collaborative.
+
+**Request body:**
+```json
+{
+  "song_ids": [3, 1, 2]
+}
+```
+
+- `song_ids` — required; must contain exactly the same song IDs currently in the playlist (no additions or removals), in the new desired order
+
+**Response 200:**
+```json
+{
+  "success": true,
+  "data": {}
+}
+```
+
+**Response 400:** Validation error or `song_ids` does not match the current set of songs in the playlist.
+**Response 401:** Not authenticated.
+**Response 403:** Not the owner and playlist is not collaborative.
+**Response 404:** Playlist not found.
+
+---
+
 ## Songs
 
 Song objects have the shape:

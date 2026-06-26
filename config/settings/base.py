@@ -63,6 +63,7 @@ THIRD_PARTY_APPS = [
 LOCAL_APPS = [
     "cc.users",
     "cc.songs",
+    "cc.playlists",
 ]
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
@@ -196,8 +197,8 @@ REST_FRAMEWORK = {
         "rest_framework.throttling.UserRateThrottle",
     ],
     "DEFAULT_THROTTLE_RATES": {
-        "anon": "100/hour",
-        "user": "1000/hour",
+        "anon": "6000/hour",
+        "user": "6000/hour",
         "auth": "10/min",
         "favorite_toggle": "4/min",
     },
