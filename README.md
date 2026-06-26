@@ -82,3 +82,9 @@ Now you have your own mail server running locally, ready to receive whatever you
 ## Deployment
 
 The following details how to deploy this application.
+
+## Run DB Import
+
+```shell
+uv run python manage.py import_songs --file=cc.sql --user=jdavid.gaitan@gmail.com
+```

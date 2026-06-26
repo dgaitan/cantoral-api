@@ -10,8 +10,10 @@ from cc.songs.importer import (
     InlineChordConverter,
     LyricsConverter,
     PostgresSqlDumpParser,
+    _copy_unescape,
 )
 from cc.songs.models import Author, Song, Tag
+from cc.songs.tests.factories import SongFactory
 from cc.users.tests.factories import UserFactory
 
 # ---------------------------------------------------------------------------
@@ -91,6 +93,37 @@ _SQL_WITH_VERSES = f"{_SQL_NO_VERSES}\n{_VERSES_BLOCK}"
 # ---------------------------------------------------------------------------
 # Unit tests — PostgresSqlDumpParser
 # ---------------------------------------------------------------------------
+
+
+class TestCopyUnescape:
+    def test_double_backslash_becomes_single(self):
+        assert _copy_unescape("a\\\\b") == "a\\b"
+
+    def test_backslash_n_becomes_newline(self):
+        assert _copy_unescape("a\\nb") == "a\nb"
+
+    def test_backslash_t_becomes_tab(self):
+        assert _copy_unescape("a\\tb") == "a\tb"
+
+    def test_unrecognized_escape_keeps_char(self):
+        # PostgreSQL keeps the following char when escape is unknown, e.g. \/ → /
+        assert _copy_unescape("\\/") == "/"
+
+    def test_unicode_escape_roundtrip(self):
+        # Simulates what PostgreSQL COPY TEXT does to a JSON é escape:
+        # é in JSON → \\ + u00e9 in COPY dump → after unescape → é in JSON
+        # which json.loads then decodes as é
+        import json
+        raw = '{"v":"\\\\u00e9"}'   # as stored in COPY dump
+        unescaped = _copy_unescape(raw)
+        assert json.loads(unescaped) == {"v": "é"}
+
+    def test_backslash_slash_in_html_tag(self):
+        # <\/p> in COPY dump (the \/ is how PostgreSQL escapes the JSON \/ sequence)
+        import json
+        raw = '{"v":"<\\\\/p>"}'   # \\\\ in Python source = \\ in string = COPY-escaped backslash
+        unescaped = _copy_unescape(raw)
+        assert json.loads(unescaped) == {"v": "</p>"}
 
 
 class TestPostgresSqlDumpParser:
@@ -232,6 +265,33 @@ class TestLyricsConverterFromLyricsJson:
         assert "[verse]" in result
         assert "[unknown_type]" not in result
 
+    def test_p_tags_become_newlines(self):
+        data = json.dumps([{"type": "verse", "data": {"content": "<p>Line one</p><p>Line two</p>"}}])
+        result = LyricsConverter.from_lyrics_json(data)
+        assert "<p>" not in result
+        assert "Line one\nLine two" in result
+
+    def test_nbsp_is_cleaned(self):
+        data = json.dumps([{"type": "verse", "data": {"content": "<p>Line one&nbsp;</p>"}}])
+        result = LyricsConverter.from_lyrics_json(data)
+        assert "\xa0" not in result
+        lines = [ln for ln in result.splitlines() if "Line one" in ln]
+        assert lines and not lines[0].endswith((" ", "\xa0"))
+
+    def test_empty_p_does_not_create_double_newline(self):
+        data = json.dumps([{"type": "verse", "data": {"content": "<p>Line one</p><p></p><p>Line two</p>"}}])
+        result = LyricsConverter.from_lyrics_json(data)
+        assert "Line one\nLine two" in result
+        # Extract the verse section content (after "[verse]\n") and confirm no blank lines within
+        verse_content = result.split("[verse]\n", 1)[-1]
+        assert "\n\n" not in verse_content
+
+    def test_no_crlf_in_output(self):
+        content = "<p>Line one\r\n</p><p>Line two</p>"
+        data = json.dumps([{"type": "verse", "data": {"content": content}}])
+        result = LyricsConverter.from_lyrics_json(data)
+        assert "\r" not in result
+
 
 # ---------------------------------------------------------------------------
 # Integration tests
@@ -339,6 +399,41 @@ class TestImportSongsService:
         _svc(sql_file_no_verses, admin_user.email).dispatch()
         assert Song.objects.get(name="Song One").slug == "song-one"
         assert Song.objects.get(name="Song Two").slug == "song-two"
+
+    def test_import_updates_lyrics_when_slug_exists(self, sql_file_no_verses, admin_user):
+        # Pre-create a song with the same slug — importer should update lyrics, not duplicate
+        existing = SongFactory(slug="song-one", plain_lyrics="old lyrics", created_by=admin_user)
+        assert Song.objects.filter(slug="song-one").count() == 1
+
+        _svc(sql_file_no_verses, admin_user.email).dispatch()
+
+        assert Song.objects.filter(slug="song-one").count() == 1
+        existing.refresh_from_db()
+        assert existing.plain_lyrics != "old lyrics"
+        assert "Line one" in existing.plain_lyrics
+
+    def test_import_updates_all_duplicates_with_same_slug(self, sql_file_no_verses, admin_user):
+        # Slug is unique=False on Song — pre-existing duplicates must all be updated
+        dup1 = SongFactory(slug="song-one", plain_lyrics="old 1", created_by=admin_user)
+        dup2 = SongFactory(slug="song-one", plain_lyrics="old 2", created_by=admin_user)
+
+        _svc(sql_file_no_verses, admin_user.email).dispatch()
+
+        dup1.refresh_from_db()
+        dup2.refresh_from_db()
+        assert "Line one" in dup1.plain_lyrics
+        assert "Line one" in dup2.plain_lyrics
+
+    def test_import_creates_song_when_slug_not_found(self, sql_file_no_verses, admin_user):
+        assert not Song.objects.filter(slug="song-one").exists()
+        _svc(sql_file_no_verses, admin_user.email).dispatch()
+        assert Song.objects.filter(slug="song-one").exists()
+
+    def test_plain_lyrics_has_no_p_tags_and_correct_newlines(self, sql_file_no_verses, admin_user):
+        _svc(sql_file_no_verses, admin_user.email).dispatch()
+        song = Song.objects.get(name="Song One")
+        assert "<p>" not in song.plain_lyrics
+        assert "Line one\nLine two" in song.plain_lyrics
 
     def test_import_falls_back_to_slugified_name_when_slug_null(
         self,

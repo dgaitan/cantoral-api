@@ -8,6 +8,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from cc.songs.services import _sync_song_verses
 from django.db import transaction
 from django.utils.text import slugify
 
@@ -45,10 +46,42 @@ class _HTMLStripper(HTMLParser):
 
 
 def _strip_html(text: str) -> str:
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    text = text.replace("&nbsp;", " ")
+    text = re.sub(r"</p\s*>", "\n", text, flags=re.IGNORECASE)
     text = re.sub(r"<br\s*/?>", "\n", text, flags=re.IGNORECASE)
     stripper = _HTMLStripper()
     stripper.feed(text)
-    return html.unescape(stripper.result())
+    result = html.unescape(stripper.result())
+    result = result.replace("\xa0", " ")
+    lines = [line.rstrip() for line in result.split("\n")]
+    return "\n".join(lines)
+
+
+_COPY_ESCAPE_RE = re.compile(r"\\(.)", re.DOTALL)
+_COPY_ESCAPE_MAP = {
+    "\\": "\\",
+    "n": "\n",
+    "r": "\r",
+    "t": "\t",
+    "b": "\b",
+    "f": "\f",
+    "v": "\v",
+}
+
+
+def _copy_unescape(value: str) -> str:
+    """Unescape a PostgreSQL COPY TEXT column value.
+
+    PostgreSQL escapes backslashes as ``\\`` and control characters as ``\\n``
+    etc. Without this step the raw column value passes a double-escaped string
+    to ``json.loads``, which decodes ``\\u00e9`` as the literal six-character
+    sequence ``\\u00e9`` instead of ``é``.
+    """
+    return _COPY_ESCAPE_RE.sub(
+        lambda m: _COPY_ESCAPE_MAP.get(m.group(1), m.group(1)),
+        value,
+    )
 
 
 class PostgresSqlDumpParser:
@@ -67,7 +100,7 @@ class PostgresSqlDumpParser:
                     continue
                 values = line.split("\t")
                 row: dict[str, str | None] = {
-                    col: None if val == r"\N" else val
+                    col: None if val == r"\N" else _copy_unescape(val)
                     for col, val in zip(columns, values, strict=False)
                 }
                 rows.append(row)
@@ -143,7 +176,9 @@ class LyricsConverter:
             vtype = raw_type if raw_type in ("verse", "chorus", "bridge") else "verse"
             raw_content: str = section.get("data", {}).get("content", "")
             content = _strip_html(raw_content).strip()
-            parts.append(f"[{vtype}]\n{content}")
+            content = re.sub(r"\n{2,}", "\n", content)
+            if content:
+                parts.append(f"[{vtype}]\n{content}")
         return "\n\n".join(parts) + "\n"
 
 
@@ -313,6 +348,11 @@ class ImportSongsService:
 
             song_name = row["name"] or ""
             song_slug = row.get("slug") or slugify(song_name)
+
+            existing_qs = Song.objects.filter(slug=song_slug)
+            # If exists, want to delete the previous one and create a new one
+            if existing_qs.exists():
+                existing_qs.delete()
             song = Song.objects.create(
                 name=song_name,
                 slug=song_slug,
@@ -322,6 +362,9 @@ class ImportSongsService:
                 views=int(row.get("views") or 0),
                 created_by=user,
             )
+
+            _sync_song_verses(song)
+            print("generated verses for song", song.name, "with id", song.id, "and verses count", song.verses.count())
             sid = str(row["id"])
             if song_authors.get(sid):
                 song.authors.set(song_authors[sid])

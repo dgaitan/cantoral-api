@@ -111,6 +111,9 @@ def sync_song_verses(song: Song, parsed: dict) -> None:
     if verses:
         Verse.objects.bulk_create(verses)
 
+def _sync_song_verses(song: Song) -> None:
+    parsed = LyricsParser(song.plain_lyrics).parse()
+    sync_song_verses(song, parsed)
 
 class PublishSongService:
     def __init__(self, song: Song) -> None:

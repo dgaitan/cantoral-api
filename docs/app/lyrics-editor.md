@@ -248,3 +248,46 @@ We should return in the song payload the following:
 
 We have the functionality to transport songs.
 So, we need to create an algorithm that takes the chords defined in the editor and transport it by mid tones.
+
+---
+
+## Source Database Format (Legacy Laravel Import Reference)
+
+The old Laravel app stored lyrics in two places on the `songs` table. The importer in `cc/songs/importer.py` reads from both, preferring the `verses` table when it exists.
+
+### `lyrics` column (JSON array)
+
+Each song's lyrics were stored as a JSON array of sections:
+
+```json
+[
+  {"type": "verse", "data": {"content": "<p>Lyric line one&nbsp;</p><p>Lyric line two</p>"}},
+  {"type": "chorus", "data": {"content": "<p>Chorus line</p>"}}
+]
+```
+
+Key characteristics of the HTML content:
+- Each lyric line is wrapped in a `<p>...</p>` tag (output of the WYSIWYG editor).
+- Lines often end with `&nbsp;` (trailing non-breaking space inserted by the editor).
+- `<br>` tags also appear for inline line breaks within a paragraph.
+- Content may contain `\r\n` (Windows-style line endings) from some browser/OS combinations.
+- Valid `type` values: `"verse"`, `"chorus"`, `"bridge"`. Any other type is imported as `verse`.
+
+The importer's `_strip_html` function handles all of these: it converts `</p>` and `<br>` to `\n`, cleans `&nbsp;`, normalizes `\r\n` to `\n`, and strips trailing spaces from each line. Empty sections are skipped. Multiple consecutive blank lines within a section are collapsed to a single newline.
+
+### `verses` table (preferred when present)
+
+When the dump contains a `verses` table, the importer uses it instead of the `lyrics` JSON column. Each row is a section:
+
+| column | description |
+|--------|-------------|
+| `song_id` | FK to songs |
+| `order` | display order (ascending) |
+| `verse_type` | `1`=verse, `2`=chorus, `3`=bridge, `4`/`5`=verse |
+| `content` | plain text with inline chord notation |
+
+Inline chords use square brackets: `Porque[C] eres la razón[G]`. The importer converts these to the positional `{C}` format on a chord line above the lyric line.
+
+### `lyrics_with_chords` column
+
+Plain-text chord sheet (not HTML). The importer does **not** use this column — the `verses` table supersedes it when present, and the `lyrics` JSON column is used otherwise.
