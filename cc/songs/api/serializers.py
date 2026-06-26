@@ -91,6 +91,7 @@ class SongSerializer(serializers.ModelSerializer[Song]):
         if request is None or not request.user.is_authenticated:
             return False
         cache_key = f"user_{request.user.pk}_favorited_song_{obj.pk}"
+        
         cached = cache.get(cache_key)
         if cached is not None:
             return cached
