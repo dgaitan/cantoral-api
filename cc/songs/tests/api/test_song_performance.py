@@ -369,6 +369,81 @@ class TestSongListOrdering:
         ]
 
 
+class TestSongListRandomOrder:
+    def test_order_by_rand_returns_all_songs(self) -> None:
+        songs = SongFactory.create_batch(10)
+
+        response = APIClient().get(reverse("song-list"), {"order_by": "rand"})
+
+        assert response.status_code == HTTPStatus.OK
+        result_ids = {s["id"] for s in response.data["data"]["results"]}
+        assert result_ids == {song.pk for song in songs}
+
+    def test_order_by_rand_shuffles_across_requests(self) -> None:
+        SongFactory.create_batch(20)
+        client = APIClient()
+        url = reverse("song-list")
+
+        def _ordered_ids() -> list[int]:
+            response = client.get(url, {"order_by": "rand"})
+            return [s["id"] for s in response.data["data"]["results"]]
+
+        assert _ordered_ids() != _ordered_ids()
+
+    def test_order_by_rand_ignores_order_direction(self) -> None:
+        SongFactory.create_batch(3)
+
+        response = APIClient().get(
+            reverse("song-list"),
+            {"order_by": "rand", "order": "desc"},
+        )
+
+        assert response.status_code == HTTPStatus.OK
+
+    def test_order_by_rand_combined_with_limit_returns_limit_songs(self) -> None:
+        songs = SongFactory.create_batch(10)
+        limit = 4
+
+        response = APIClient().get(
+            reverse("song-list"),
+            {"order_by": "rand", "limit": limit},
+        )
+
+        assert response.status_code == HTTPStatus.OK
+        assert isinstance(response.data["data"], list)
+        result_ids = [s["id"] for s in response.data["data"]]
+        assert len(result_ids) == limit
+        assert set(result_ids).issubset({song.pk for song in songs})
+
+    def test_order_by_rand_combined_with_search_has_no_duplicates(self) -> None:
+        # Regression test: Postgres requires ORDER BY RANDOM() to appear in
+        # the SELECT DISTINCT column list, which — without the dedup fix in
+        # SongQuerySet._random_order_queryset — makes a song matched via two
+        # joined rows (two matching authors here) come back twice.
+        song = SongFactory.create(name="Song With Two Matching Authors")
+        song.authors.add(
+            AuthorFactory.create(name="Aleluya Uno"),
+            AuthorFactory.create(name="Aleluya Dos"),
+        )
+        SongFactory.create(name="Otra Cancion")
+
+        response = APIClient().get(
+            reverse("song-list"),
+            {"search": "Aleluya", "order_by": "rand"},
+        )
+
+        assert response.status_code == HTTPStatus.OK
+        result_ids = [s["id"] for s in response.data["data"]["results"]]
+        assert result_ids == [song.pk]
+
+    def test_order_by_rand_requires_no_authentication(self) -> None:
+        SongFactory.create_batch(3)
+
+        response = APIClient().get(reverse("song-list"), {"order_by": "rand"})
+
+        assert response.status_code == HTTPStatus.OK
+
+
 class TestSongListLimitAndOrderingCombined:
     def test_most_viewed_songs_use_case(self) -> None:
         low = SongFactory.create(views=1)

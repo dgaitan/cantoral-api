@@ -21,7 +21,10 @@ class SongQuerySet(BaseQuerySet):
     ]
 
     ORDER_BY_FIELDS: frozenset[str] = frozenset({"views", "created_at"})
+    RANDOM_ORDER_VALUE: str = "rand"
     ORDER_DIRECTION_PREFIXES: dict[str, str] = {"asc": "", "desc": "-"}
+
+    _needs_distinct: bool = False
 
     def base_queryset(self) -> QuerySet[Song]:
         return Song.objects.prefetch_related("tags", "authors", "verses").order_by(
@@ -29,7 +32,7 @@ class SongQuerySet(BaseQuerySet):
         )
 
     def perform_filters(self) -> Self:
-        needs_distinct: bool = False
+        self._needs_distinct = False
         if self.filters.get("search"):
             search = self.filters["search"]
             self.queryset = self.queryset.filter(
@@ -38,7 +41,7 @@ class SongQuerySet(BaseQuerySet):
                 | Q(authors__name__icontains=search)
                 | Q(tags__name__icontains=search),
             )
-            needs_distinct = True
+            self._needs_distinct = True
 
         if self.filters.get("author_id"):
             try:
@@ -56,7 +59,7 @@ class SongQuerySet(BaseQuerySet):
                 raise ValueError(msg) from exc
             self.queryset = self.queryset.filter(tags__id=tag_id)
 
-        if needs_distinct:
+        if self._needs_distinct:
             self.queryset = self.queryset.distinct()
 
         self.queryset = self._apply_ordering()
@@ -70,14 +73,16 @@ class SongQuerySet(BaseQuerySet):
             return self.queryset
 
         field = order_by or "created_at"
-        direction = order or "asc"
+
+        if field == self.RANDOM_ORDER_VALUE:
+            return self._random_order_queryset()
 
         if field not in self.ORDER_BY_FIELDS:
-            msg = (
-                f"order_by must be one of {sorted(self.ORDER_BY_FIELDS)}, "
-                f"got {order_by!r}"
-            )
+            valid_values = sorted({*self.ORDER_BY_FIELDS, self.RANDOM_ORDER_VALUE})
+            msg = f"order_by must be one of {valid_values}, got {order_by!r}"
             raise ValueError(msg)
+
+        direction = order or "asc"
         try:
             prefix = self.ORDER_DIRECTION_PREFIXES[direction]
         except KeyError as exc:
@@ -88,3 +93,14 @@ class SongQuerySet(BaseQuerySet):
             raise ValueError(msg) from exc
 
         return self.queryset.order_by(f"{prefix}{field}")
+
+    def _random_order_queryset(self) -> QuerySet[Song]:
+        # Postgres requires ORDER BY RANDOM() to appear in the SELECT DISTINCT
+        # column list, which defeats the search filter's distinct() above — a
+        # song matched via two joined rows (e.g. two authors) would come back
+        # twice. Re-scope to the already-deduplicated pk set on a fresh,
+        # non-distinct queryset instead, where ordering by "?" is unrestricted.
+        if not self._needs_distinct:
+            return self.queryset.order_by("?")
+        deduplicated_pks = self.queryset.values("pk")
+        return self.base_queryset().filter(pk__in=deduplicated_pks).order_by("?")

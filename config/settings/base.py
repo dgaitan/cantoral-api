@@ -188,7 +188,7 @@ REDIS_SSL = REDIS_URL.startswith("rediss://")
 # -------------------------------------------------------------------------------
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "cc.utils.authentication.ApiJWTAuthentication",
         "rest_framework.authentication.SessionAuthentication",  # enables Django admin + browsable API
     ),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),

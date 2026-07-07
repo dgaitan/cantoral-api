@@ -561,10 +561,12 @@ List all songs (paginated).
 - `?author_id=<int>` — filter to songs that have the given author; returns 400 for non-integer values, empty list for unknown IDs
 - `?tag_id=<int>` — filter to songs that have the given tag; returns 400 for non-integer values, empty list for unknown IDs
 - `?limit=<positive int>` — caps the number of songs returned. When present, pagination is skipped entirely and `data` is a plain array of songs instead of the paginated envelope. Returns 400 for zero, negative, or non-integer values.
-- `?order_by=<views|created_at>` — field to sort by. Returns 400 for any other value.
+- `?order_by=<views|created_at|rand>` — field to sort by. `rand` returns the songs in random order (a fresh shuffle on every request) and ignores `order` (direction is meaningless for a random order — no error if you pass one). Returns 400 for any other value.
 - `?order=<asc|desc>` — sort direction, default `asc` when `order_by` (or `order` itself) is given. If `order` is given without `order_by`, it defaults `order_by` to `created_at`. If neither is given, ordering is unchanged from today: newest first (`-created_at`). Returns 400 for any value other than `asc`/`desc`.
 
-All params are optional and combinable — each active param narrows the result set (AND logic). Example — most-viewed songs for a home page: `?limit=10&order_by=views&order=desc`.
+All params are optional and combinable — each active param narrows the result set (AND logic). Examples:
+- Most-viewed songs for a home page: `?limit=10&order_by=views&order=desc`
+- Random sample for a "discover" widget: `?limit=5&order_by=rand`
 
 **Response 200 (no `limit`):**
 ```json
