@@ -64,6 +64,10 @@ class AuthorWriteSerializer(SlugAutoGenerateMixin, serializers.ModelSerializer[A
         fields = ["name", "image", "bio", "slug"]
 
 
+class SongListQuerySerializer(serializers.Serializer):
+    limit = serializers.IntegerField(required=False, min_value=1)
+
+
 class SongSerializer(serializers.ModelSerializer[Song]):
     tags = TagSerializer(many=True, read_only=True)
     authors = AuthorSerializer(many=True, read_only=True)
@@ -91,7 +95,7 @@ class SongSerializer(serializers.ModelSerializer[Song]):
         if request is None or not request.user.is_authenticated:
             return False
         cache_key = f"user_{request.user.pk}_favorited_song_{obj.pk}"
-        
+
         cached = cache.get(cache_key)
         if cached is not None:
             return cached

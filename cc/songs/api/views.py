@@ -11,6 +11,7 @@ from cc.songs.api.permissions import CanCreateSongs, CanPublishSongs
 from cc.songs.api.serializers import (
     AuthorSerializer,
     AuthorWriteSerializer,
+    SongListQuerySerializer,
     SongSerializer,
     SongWriteSerializer,
     TagSerializer,
@@ -24,6 +25,7 @@ from cc.songs.queries import SongQuerySet
 from cc.songs.services import (
     CreateSongService,
     PublishSongService,
+    RegisterSongViewService,
     ToggleFavoriteService,
     UpdateSongService,
 )
@@ -49,6 +51,7 @@ class SongViewSet(BaseViewSet):
         "publish": [CanPublishSongs],
         "transport": [AllowAny],
         "favorites": [IsAuthenticated],
+        "view": [AllowAny],
     }
     throttle_classes_mapping = {
         "favorites": [FavoriteToggleThrottle],
@@ -66,6 +69,23 @@ class SongViewSet(BaseViewSet):
                 success=False,
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        query_serializer = SongListQuerySerializer(data=request.query_params)
+        if not query_serializer.is_valid():
+            return ApiResponse(
+                errors=query_serializer.errors,
+                success=False,
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        limit = query_serializer.validated_data.get("limit")
+        if limit is not None:
+            serializer = SongSerializer(
+                queryset[:limit],
+                many=True,
+                context={"request": request},
+            )
+            return ApiResponse(data=serializer.data, status=status.HTTP_200_OK)
+
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = SongSerializer(page, many=True, context={"request": request})
@@ -179,6 +199,15 @@ class SongViewSet(BaseViewSet):
     def publish(self, request: Request, pk: str | None = None) -> ApiResponse:
         song = self.get_object()
         song = PublishSongService(song).dispatch()
+        return ApiResponse(
+            data=SongSerializer(song, context={"request": request}).data,
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=True, methods=["post"])
+    def view(self, request: Request, pk: str | None = None) -> ApiResponse:
+        song = self.get_object()
+        song = RegisterSongViewService(song=song).dispatch()
         return ApiResponse(
             data=SongSerializer(song, context={"request": request}).data,
             status=status.HTTP_200_OK,

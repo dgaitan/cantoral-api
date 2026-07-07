@@ -170,3 +170,4 @@ Auth endpoints (`RegisterView`, `LoginView`, `VerifyEmailTokenView`) must declar
 - **No HTML templates** — do not add template-based views, forms, or crispy-forms. Any new endpoint must be a DRF APIView or ViewSet.
 - `ATOMIC_REQUESTS = True` wraps every request in a DB transaction — avoid long operations in views.
 - We use DRY Principle.
+- **Pythonic control flow**: prefer flat guard clauses over nested `if` statements (`ruff`'s `SIM102` enforces this). For branching over a small fixed set of values, prefer a dict/set lookup over an `if/elif` chain or ternary — e.g. `{"asc": "", "desc": "-"}[direction]` instead of `"" if direction == "asc" else "-"`. Extract branchy logic into a small helper method rather than nesting it inline. Use EAFP (`try`/`except`) for control flow where failure is the exceptional path (e.g. parsing/lookup); use a plain `in` membership check for validating against a fixed vocabulary — that's not an EAFP violation.

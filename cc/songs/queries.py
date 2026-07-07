@@ -16,7 +16,12 @@ class SongQuerySet(BaseQuerySet):
         "search",
         "author_id",
         "tag_id",
+        "order_by",
+        "order",
     ]
+
+    ORDER_BY_FIELDS: frozenset[str] = frozenset({"views", "created_at"})
+    ORDER_DIRECTION_PREFIXES: dict[str, str] = {"asc": "", "desc": "-"}
 
     def base_queryset(self) -> QuerySet[Song]:
         return Song.objects.prefetch_related("tags", "authors", "verses").order_by(
@@ -54,4 +59,32 @@ class SongQuerySet(BaseQuerySet):
         if needs_distinct:
             self.queryset = self.queryset.distinct()
 
+        self.queryset = self._apply_ordering()
+
         return self
+
+    def _apply_ordering(self) -> QuerySet[Song]:
+        order_by = self.filters.get("order_by")
+        order = self.filters.get("order")
+        if order_by is None and order is None:
+            return self.queryset
+
+        field = order_by or "created_at"
+        direction = order or "asc"
+
+        if field not in self.ORDER_BY_FIELDS:
+            msg = (
+                f"order_by must be one of {sorted(self.ORDER_BY_FIELDS)}, "
+                f"got {order_by!r}"
+            )
+            raise ValueError(msg)
+        try:
+            prefix = self.ORDER_DIRECTION_PREFIXES[direction]
+        except KeyError as exc:
+            msg = (
+                f"order must be one of {sorted(self.ORDER_DIRECTION_PREFIXES)}, "
+                f"got {order!r}"
+            )
+            raise ValueError(msg) from exc
+
+        return self.queryset.order_by(f"{prefix}{field}")

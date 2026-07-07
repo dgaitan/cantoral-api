@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from django.conf import settings
 from django.core.cache import cache
 from django.db import transaction
+from django.db.models import F
 from django.utils.text import slugify
 
 from cc.songs.extraction import ChordSheetExtractor, get_agent
@@ -111,9 +112,11 @@ def sync_song_verses(song: Song, parsed: dict) -> None:
     if verses:
         Verse.objects.bulk_create(verses)
 
+
 def _sync_song_verses(song: Song) -> None:
     parsed = LyricsParser(song.plain_lyrics).parse()
     sync_song_verses(song, parsed)
+
 
 class PublishSongService:
     def __init__(self, song: Song) -> None:
@@ -123,6 +126,17 @@ class PublishSongService:
     def dispatch(self) -> Song:
         self.song.is_public = True
         self.song.save(update_fields=["is_public"])
+        return self.song
+
+
+class RegisterSongViewService:
+    def __init__(self, song: Song) -> None:
+        self.song = song
+
+    @transaction.atomic
+    def dispatch(self) -> Song:
+        Song.objects.filter(pk=self.song.pk).update(views=F("views") + 1)
+        self.song.refresh_from_db(fields=["views"])
         return self.song
 
 

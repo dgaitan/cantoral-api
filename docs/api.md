@@ -560,10 +560,13 @@ List all songs (paginated).
 - `?search=<query>` — PostgreSQL full-text search on song name and lyrics (requires full words); case-insensitive substring match on author names and tag names (partial words work)
 - `?author_id=<int>` — filter to songs that have the given author; returns 400 for non-integer values, empty list for unknown IDs
 - `?tag_id=<int>` — filter to songs that have the given tag; returns 400 for non-integer values, empty list for unknown IDs
+- `?limit=<positive int>` — caps the number of songs returned. When present, pagination is skipped entirely and `data` is a plain array of songs instead of the paginated envelope. Returns 400 for zero, negative, or non-integer values.
+- `?order_by=<views|created_at>` — field to sort by. Returns 400 for any other value.
+- `?order=<asc|desc>` — sort direction, default `asc` when `order_by` (or `order` itself) is given. If `order` is given without `order_by`, it defaults `order_by` to `created_at`. If neither is given, ordering is unchanged from today: newest first (`-created_at`). Returns 400 for any value other than `asc`/`desc`.
 
-All params are optional and combinable — each active param narrows the result set (AND logic).
+All params are optional and combinable — each active param narrows the result set (AND logic). Example — most-viewed songs for a home page: `?limit=10&order_by=views&order=desc`.
 
-**Response 200:**
+**Response 200 (no `limit`):**
 ```json
 {
   "success": true,
@@ -573,6 +576,14 @@ All params are optional and combinable — each active param narrows the result 
     "previous": null,
     "results": [{ ...song }, ...]
   }
+}
+```
+
+**Response 200 (with `limit`):**
+```json
+{
+  "success": true,
+  "data": [{ ...song }, ...]
 }
 ```
 
@@ -727,6 +738,24 @@ Transpose the song's chords to a different tone.
 **Response 200:** Song object with `lyrics` transposed to the new tone.
 
 **Response 400:** Invalid tone value.
+
+---
+
+### POST /api/v1/songs/{id}/view/
+
+Register a view on a song. Increments the song's `views` counter by one (atomic — safe under concurrent requests) and returns the updated song.
+
+**Auth required:** No
+
+**Response 200:**
+```json
+{
+  "success": true,
+  "data": { ...song }
+}
+```
+
+**Response 404:** Song not found.
 
 ---
 
