@@ -11,6 +11,15 @@ ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["cantoralcatolico.org"
 # ------------------------------------------------------------------------------
 DATABASES["default"]["CONN_MAX_AGE"] = env.int("CONN_MAX_AGE", default=60)
 
+# STATIC (admin UI only, served by whitenoise from the app container)
+# ------------------------------------------------------------------------------
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+
 # CACHES
 # ------------------------------------------------------------------------------
 CACHES = {
@@ -30,6 +39,9 @@ CACHES = {
 # ------------------------------------------------------------------------------
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_SSL_REDIRECT = env.bool("DJANGO_SECURE_SSL_REDIRECT", default=True)
+# kamal-proxy probes /up/ directly over plain HTTP on the internal Docker
+# network (no X-Forwarded-Proto) — exempt it or the health check 301-loops.
+SECURE_REDIRECT_EXEMPT = [r"^up/$"]
 SESSION_COOKIE_SECURE = True
 SESSION_COOKIE_NAME = "__Secure-sessionid"
 CSRF_COOKIE_SECURE = True

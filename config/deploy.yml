@@ -1,0 +1,52 @@
+service: cc
+image: cantoralcatolico/cc
+
+servers:
+  web:
+    hosts:
+      - 159.89.234.30
+    cmd: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3
+  worker:
+    hosts:
+      - 159.89.234.30
+    cmd: celery -A config worker -l info
+    env:
+      clear:
+        KAMAL_ROLE: worker
+
+registry:
+  server: registry.digitalocean.com
+  username: jdavid.gaitan@gmail.com
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+builder:
+  arch: amd64
+
+proxy:
+  ssl: true
+  host: cantoralcatolico.org
+  app_port: 8000
+  healthcheck:
+    path: /up/
+    interval: 5
+
+env:
+  clear:
+    DJANGO_SETTINGS_MODULE: config.settings.production
+    DJANGO_ALLOWED_HOSTS: cantoralcatolico.org
+    DJANGO_SECURE_SSL_REDIRECT: "true"
+    KAMAL_ROLE: web
+  secret:
+    - DJANGO_SECRET_KEY
+    - DJANGO_ADMIN_URL
+    - DATABASE_URL
+    - REDIS_URL
+
+accessories:
+  redis:
+    image: redis:7-alpine
+    host: 159.89.234.30
+    cmd: redis-server --appendonly yes
+    volumes:
+      - "cc_redis_data:/data"

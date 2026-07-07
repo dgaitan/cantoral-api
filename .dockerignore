@@ -1,0 +1,17 @@
+.git/
+.venv/
+__pycache__/
+*.pyc
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.docs/
+.specs/
+Plans/
+docs/
+cc.sql
+staticfiles/
+.env
+.envs/
+.env.kamal
+htmlcov/

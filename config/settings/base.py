@@ -100,6 +100,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # ------------------------------------------------------------------------------
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "cc.utils.middleware.JSONContentTypeMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",

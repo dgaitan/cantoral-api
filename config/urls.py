@@ -8,19 +8,22 @@ from rest_framework_simplejwt.views import (
     TokenVerifyView,
 )
 
+from cc.playlists.api.views import ProfilePlaylistsView
 from cc.users.api.auth_views import (
     LoginView,
     LogoutView,
     RegisterView,
     VerifyEmailTokenView,
 )
-from cc.playlists.api.views import ProfilePlaylistsView
 from cc.users.api.profile_views import (
     FavoriteSongsView,
     ProfileView,
 )
+from config.views import healthcheck
 
 urlpatterns = [
+    # Health check (used by Kamal / kamal-proxy)
+    path("up/", healthcheck, name="healthcheck"),
     # Django Admin
     path(settings.ADMIN_URL, admin.site.urls),
     # API
