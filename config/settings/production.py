@@ -39,9 +39,6 @@ CACHES = {
 # ------------------------------------------------------------------------------
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_SSL_REDIRECT = env.bool("DJANGO_SECURE_SSL_REDIRECT", default=True)
-# kamal-proxy probes /up/ directly over plain HTTP on the internal Docker
-# network (no X-Forwarded-Proto) — exempt it or the health check 301-loops.
-SECURE_REDIRECT_EXEMPT = [r"^up/$"]
 SESSION_COOKIE_SECURE = True
 SESSION_COOKIE_NAME = "__Secure-sessionid"
 CSRF_COOKIE_SECURE = True

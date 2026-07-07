@@ -19,11 +19,10 @@ from cc.users.api.profile_views import (
     FavoriteSongsView,
     ProfileView,
 )
-from config.views import healthcheck
 
 urlpatterns = [
-    # Health check (used by Kamal / kamal-proxy)
-    path("up/", healthcheck, name="healthcheck"),
+    # /up/ health check is served by cc.utils.middleware.HealthCheckMiddleware,
+    # before URL resolution runs — no route needed here.
     # Django Admin
     path(settings.ADMIN_URL, admin.site.urls),
     # API

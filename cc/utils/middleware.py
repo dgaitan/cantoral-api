@@ -4,12 +4,33 @@ from typing import TYPE_CHECKING
 
 from django.http import JsonResponse
 
+from config.views import healthcheck
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from django.http import HttpRequest, HttpResponse
 
 _REQUIRE_JSON_CONTENT_TYPE = frozenset({"POST", "PUT", "PATCH"})
+
+
+class HealthCheckMiddleware:
+    """Serve /up/ before any downstream middleware calls request.get_host().
+
+    kamal-proxy's internal health probe hits the container directly and
+    doesn't send a Host header matching ALLOWED_HOSTS, so
+    django.middleware.common.CommonMiddleware would otherwise raise
+    DisallowedHost (HTTP 400) on every check. Must stay first in
+    MIDDLEWARE so nothing else in the chain runs for this path.
+    """
+
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
+        self.get_response = get_response
+
+    def __call__(self, request: HttpRequest) -> HttpResponse:
+        if request.META.get("PATH_INFO") == "/up/":
+            return healthcheck(request)
+        return self.get_response(request)
 
 
 class JSONContentTypeMiddleware:
