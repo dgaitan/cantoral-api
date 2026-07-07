@@ -23,9 +23,11 @@ registry:
 builder:
   arch: amd64
 
+deploy_timeout: 90
+
 proxy:
   ssl: true
-  host: cantoralcatolico.org
+  host: api.cancionero-catolico.org
   app_port: 8000
   healthcheck:
     path: /up/
@@ -34,7 +36,7 @@ proxy:
 env:
   clear:
     DJANGO_SETTINGS_MODULE: config.settings.production
-    DJANGO_ALLOWED_HOSTS: cantoralcatolico.org
+    DJANGO_ALLOWED_HOSTS: api.cancionero-catolico.org,cancionero-catolico.org
     DJANGO_SECURE_SSL_REDIRECT: "true"
     KAMAL_ROLE: web
   secret:
