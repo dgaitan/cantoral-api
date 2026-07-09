@@ -283,3 +283,4 @@ docs/reports
 .envs/
 .env
 .env.kamal
+.kamal/secrets
