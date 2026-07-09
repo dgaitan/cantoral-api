@@ -174,6 +174,7 @@ class CreateSongFromImageService:
         authors_ids: list[int] | None = None,
         tags_ids: list[int] | None = None,
         image_data: tuple[bytes, str] | None = None,
+        song: Song | None = None,
     ) -> None:
         self.user = user
         self.image_url = image_url
@@ -182,6 +183,7 @@ class CreateSongFromImageService:
         self.agent = agent
         self.authors_ids = authors_ids or []
         self.tags_ids = tags_ids or []
+        self.song = song
 
     @transaction.atomic
     def dispatch(self) -> Song:
@@ -193,13 +195,22 @@ class CreateSongFromImageService:
             self.image_data,
         ).extract()
         plain_lyrics = extracted["plain_lyrics"]
-        song = CreateSongService(
-            user=self.user,
-            name=self.name or extracted["name"],
-            authors_ids=self.authors_ids,
-            tags_ids=self.tags_ids,
-            lyrics=plain_lyrics,
-        ).dispatch()
+        if self.song is not None:
+            song = UpdateSongService(
+                song=self.song,
+                name=None,
+                authors_ids=self.authors_ids or None,
+                tags_ids=self.tags_ids or None,
+                lyrics=plain_lyrics,
+            ).dispatch()
+        else:
+            song = CreateSongService(
+                user=self.user,
+                name=self.name or extracted["name"],
+                authors_ids=self.authors_ids,
+                tags_ids=self.tags_ids,
+                lyrics=plain_lyrics,
+            ).dispatch()
         if self.image_url:
             song.source_image_url = self.image_url
             song.save(update_fields=["source_image_url"])

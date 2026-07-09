@@ -117,11 +117,27 @@ class ExtractSongFromImageForm(forms.Form):
         required=False,
         help_text="Upload a chord sheet image (JPEG, PNG, GIF, or WebP).",
     )
+    song = forms.ModelChoiceField(
+        queryset=Song.objects.all(),
+        required=False,
+        label="Existing song (optional)",
+        help_text=(
+            "If selected, the extracted lyrics overwrite this song's lyrics "
+            "instead of creating a new song. The song name is not changed."
+        ),
+        widget=admin.widgets.AutocompleteSelect(
+            Verse._meta.get_field("song"),  # noqa: SLF001
+            admin.site,
+        ),
+    )
     name = forms.CharField(
         label="Song name (optional)",
         required=False,
         max_length=255,
-        help_text="Override the title extracted from the image.",
+        help_text=(
+            "Override the title extracted from the image. "
+            "Ignored if an existing song is selected."
+        ),
     )
     agent = forms.ChoiceField(
         label="Extraction agent",
@@ -240,20 +256,28 @@ class SongAdmin(admin.ModelAdmin):  # type: ignore[type-arg]
                 if uploaded:
                     mime = (uploaded.content_type or "image/jpeg").split(";")[0].strip()
                     image_data = (uploaded.read(), mime)
+                selected_song = form.cleaned_data.get("song")
                 song = CreateSongFromImageService(
                     user=cast("User", request.user),
                     image_url=image_url,
                     image_data=image_data,
                     name=form.cleaned_data.get("name", ""),
                     agent=form.cleaned_data["agent"],
+                    song=selected_song,
                 ).dispatch()
             except ValueError as exc:
                 messages.error(request, str(exc))
             else:
-                messages.success(
-                    request,
-                    f'Draft song "{song.name}" was created from the image.',
-                )
+                if selected_song is not None:
+                    messages.success(
+                        request,
+                        f'Song "{song.name}" was updated with lyrics from the image.',
+                    )
+                else:
+                    messages.success(
+                        request,
+                        f'Draft song "{song.name}" was created from the image.',
+                    )
                 return redirect(
                     reverse("admin:songs_song_change", args=[song.pk]),
                 )

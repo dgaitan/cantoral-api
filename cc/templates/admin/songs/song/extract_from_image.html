@@ -1,10 +1,16 @@
 {% extends "admin/base_site.html" %}
 
+{% block extrahead %}
+  {{ block.super }}
+  {{ form.media }}
+{% endblock %}
+
 {% block content %}
   <h1>Extract song from chord sheet image</h1>
   <p>
     Paste a public image URL or upload an image file (JPEG, PNG, GIF, or WebP).
-    Claude vision will extract the title, lyrics, and chords into a draft song for review.
+    Claude vision will extract the title, lyrics, and chords. Select an existing
+    song to overwrite its lyrics, or leave it blank to create a new draft song.
   </p>
   <form method="post" enctype="multipart/form-data" novalidate>
     {% csrf_token %}
@@ -12,7 +18,7 @@
       {{ form.as_table }}
     </table>
     <div class="submit-row">
-      <input type="submit" value="Extract and create draft song" class="default">
+      <input type="submit" value="Extract from image" class="default">
       <a href="{% url 'admin:songs_song_changelist' %}" class="button cancel-link">Cancel</a>
     </div>
   </form>

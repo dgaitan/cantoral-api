@@ -15,7 +15,7 @@ from cc.songs.extraction import (
 )
 from cc.songs.models import Song
 from cc.songs.services import CreateSongFromImageService
-from cc.songs.tests.factories import UserFactory
+from cc.songs.tests.factories import AuthorFactory, SongFactory, TagFactory, UserFactory
 
 _VALID_PLAIN_LYRICS = """\
 ---
@@ -329,3 +329,132 @@ class TestCreateSongFromImageService:
             ).dispatch()
 
         assert Song.objects.count() == 0
+
+    @patch("cc.songs.services.get_agent")
+    @patch("cc.songs.services.ChordSheetExtractor")
+    def test_updates_existing_song_when_song_provided(
+        self,
+        mock_extractor_cls: MagicMock,
+        mock_get_agent: MagicMock,
+    ) -> None:
+        user = UserFactory()
+        existing_song = SongFactory(name="Original Name")
+        mock_get_agent.return_value = MagicMock()
+        mock_extractor_cls.return_value.extract.return_value = {
+            "name": "Extracted Song",
+            "plain_lyrics": _VALID_PLAIN_LYRICS,
+        }
+
+        song = CreateSongFromImageService(
+            user=user,
+            image_url="https://example.com/sheet.jpg",
+            song=existing_song,
+        ).dispatch()
+
+        assert Song.objects.count() == 1
+        assert song.pk == existing_song.pk
+        assert song.name == "Original Name"
+        assert song.tone == "G"
+        assert song.verses.count() == _EXPECTED_SECTION_COUNT
+
+    @patch("cc.songs.services.get_agent")
+    @patch("cc.songs.services.ChordSheetExtractor")
+    def test_ignores_name_and_extracted_name_when_song_provided(
+        self,
+        mock_extractor_cls: MagicMock,
+        mock_get_agent: MagicMock,
+    ) -> None:
+        user = UserFactory()
+        existing_song = SongFactory(name="Original Name")
+        mock_get_agent.return_value = MagicMock()
+        mock_extractor_cls.return_value.extract.return_value = {
+            "name": "Extracted Song",
+            "plain_lyrics": _VALID_PLAIN_LYRICS,
+        }
+
+        song = CreateSongFromImageService(
+            user=user,
+            image_url="https://example.com/sheet.jpg",
+            name="Some Override",
+            song=existing_song,
+        ).dispatch()
+
+        assert song.name == "Original Name"
+
+    @patch("cc.songs.services.get_agent")
+    @patch("cc.songs.services.ChordSheetExtractor")
+    def test_does_not_clear_authors_or_tags_when_song_provided(
+        self,
+        mock_extractor_cls: MagicMock,
+        mock_get_agent: MagicMock,
+    ) -> None:
+        user = UserFactory()
+        existing_song = SongFactory()
+        author = AuthorFactory()
+        tag = TagFactory()
+        existing_song.authors.add(author)
+        existing_song.tags.add(tag)
+        mock_get_agent.return_value = MagicMock()
+        mock_extractor_cls.return_value.extract.return_value = {
+            "name": "Extracted Song",
+            "plain_lyrics": _VALID_PLAIN_LYRICS,
+        }
+
+        song = CreateSongFromImageService(
+            user=user,
+            image_url="https://example.com/sheet.jpg",
+            song=existing_song,
+        ).dispatch()
+
+        assert list(song.authors.all()) == [author]
+        assert list(song.tags.all()) == [tag]
+
+    @patch("cc.songs.services.get_agent")
+    @patch("cc.songs.services.ChordSheetExtractor")
+    def test_updates_source_image_url_when_song_provided(
+        self,
+        mock_extractor_cls: MagicMock,
+        mock_get_agent: MagicMock,
+    ) -> None:
+        user = UserFactory()
+        existing_song = SongFactory(source_image_url="https://example.com/old.jpg")
+        mock_get_agent.return_value = MagicMock()
+        mock_extractor_cls.return_value.extract.return_value = {
+            "name": "Extracted Song",
+            "plain_lyrics": _VALID_PLAIN_LYRICS,
+        }
+        image_url = "https://example.com/new.jpg"
+
+        song = CreateSongFromImageService(
+            user=user,
+            image_url=image_url,
+            song=existing_song,
+        ).dispatch()
+
+        assert song.source_image_url == image_url
+
+    @patch("cc.songs.services.get_agent")
+    @patch("cc.songs.services.ChordSheetExtractor")
+    def test_invalid_plain_lyrics_raises_with_song_provided(
+        self,
+        mock_extractor_cls: MagicMock,
+        mock_get_agent: MagicMock,
+    ) -> None:
+        user = UserFactory()
+        existing_song = SongFactory()
+        original_lyrics = existing_song.plain_lyrics
+        mock_get_agent.return_value = MagicMock()
+        mock_extractor_cls.return_value.extract.return_value = {
+            "name": "Bad Song",
+            "plain_lyrics": "not valid lyrics",
+        }
+
+        with pytest.raises(ValueError, match="frontmatter"):
+            CreateSongFromImageService(
+                user=user,
+                image_url="https://example.com/sheet.jpg",
+                song=existing_song,
+            ).dispatch()
+
+        existing_song.refresh_from_db()
+        assert existing_song.plain_lyrics == original_lyrics
