@@ -252,6 +252,8 @@ ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default="")
 ANTHROPIC_VISION_MODEL = env("ANTHROPIC_VISION_MODEL", default="claude-sonnet-4-5")
 GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
 GEMINI_VISION_MODEL = env("GEMINI_VISION_MODEL", default="gemini-3.5-flash")
+OPENAI_API_KEY = env("OPENAI_API_KEY", default="")
+OPENAI_VISION_MODEL = env("OPENAI_VISION_MODEL", default="gpt-5.5")
 CHORD_EXTRACTION_DEFAULT_AGENT = env(
     "CHORD_EXTRACTION_DEFAULT_AGENT",
     default="anthropic",

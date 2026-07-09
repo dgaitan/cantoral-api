@@ -44,6 +44,7 @@ env:
     - DJANGO_ADMIN_URL
     - DATABASE_URL
     - REDIS_URL
+    - GEMINI_API_KEY
 
 accessories:
   redis:

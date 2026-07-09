@@ -12,6 +12,7 @@ from anthropic.types import TextBlock
 from django.conf import settings
 from google import genai
 from google.genai import types
+from openai import OpenAI
 
 _MIME_FROM_CONTENT_TYPE: dict[str, str] = {
     "image/jpeg": "image/jpeg",
@@ -141,4 +142,44 @@ class GeminiAgent(ExtractionAgent):
             ],
         )
         text: str = response.text
+        return text
+
+
+class OpenAIAgent(ExtractionAgent):
+    name = "openai"
+
+    def generate(
+        self,
+        prompt: str,
+        image_url: str | None,
+        image_data: _ImageData | None = None,
+    ) -> str:
+        if not settings.OPENAI_API_KEY:
+            msg = "OPENAI_API_KEY is not configured."
+            raise ValueError(msg)
+
+        if image_data:
+            raw, mime = image_data
+            b64 = base64.standard_b64encode(raw).decode()
+            input_image = f"data:{mime};base64,{b64}"
+        else:
+            input_image = image_url or ""
+
+        client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        response = client.responses.create(
+            model=settings.OPENAI_VISION_MODEL,
+            input=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "input_text", "text": prompt},
+                        {"type": "input_image", "image_url": input_image},
+                    ],
+                },
+            ],
+        )
+        text: str = response.output_text
+        if not text:
+            msg = "OpenAI response did not contain text content."
+            raise ValueError(msg)
         return text

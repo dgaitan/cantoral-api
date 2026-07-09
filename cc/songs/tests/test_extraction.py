@@ -10,6 +10,7 @@ from cc.songs.extraction import (
     AnthropicAgent,
     ChordSheetExtractor,
     GeminiAgent,
+    OpenAIAgent,
     get_agent,
     parse_extraction_response,
 )
@@ -158,6 +159,60 @@ class TestGeminiAgent:
 
 
 # ---------------------------------------------------------------------------
+# OpenAIAgent
+# ---------------------------------------------------------------------------
+
+
+class TestOpenAIAgent:
+    @override_settings(OPENAI_API_KEY="")
+    def test_missing_api_key_raises(self) -> None:
+        with pytest.raises(ValueError, match="OPENAI_API_KEY is not configured"):
+            OpenAIAgent().generate("prompt", "https://example.com/img.jpg")
+
+    @override_settings(OPENAI_API_KEY="test-key")
+    @patch("cc.songs.extraction.agents.OpenAI")
+    def test_returns_text_from_response(self, mock_cls: MagicMock) -> None:
+        mock_client = MagicMock()
+        mock_cls.return_value = mock_client
+        mock_client.responses.create.return_value = MagicMock(
+            output_text=_VALID_RESPONSE_JSON,
+        )
+
+        result = OpenAIAgent().generate("prompt", "https://example.com/img.jpg")
+
+        assert result == _VALID_RESPONSE_JSON
+        call_kwargs = mock_client.responses.create.call_args.kwargs
+        image_block = call_kwargs["input"][0]["content"][1]
+        assert image_block["type"] == "input_image"
+        assert image_block["image_url"] == "https://example.com/img.jpg"
+
+    @override_settings(OPENAI_API_KEY="test-key")
+    @patch("cc.songs.extraction.agents.OpenAI")
+    def test_encodes_image_data_as_base64_data_url(self, mock_cls: MagicMock) -> None:
+        mock_client = MagicMock()
+        mock_cls.return_value = mock_client
+        mock_client.responses.create.return_value = MagicMock(
+            output_text=_VALID_RESPONSE_JSON,
+        )
+
+        OpenAIAgent().generate("prompt", None, (b"data", "image/jpeg"))
+
+        call_kwargs = mock_client.responses.create.call_args.kwargs
+        image_block = call_kwargs["input"][0]["content"][1]
+        assert image_block["image_url"].startswith("data:image/jpeg;base64,")
+
+    @override_settings(OPENAI_API_KEY="test-key")
+    @patch("cc.songs.extraction.agents.OpenAI")
+    def test_empty_output_text_raises(self, mock_cls: MagicMock) -> None:
+        mock_client = MagicMock()
+        mock_cls.return_value = mock_client
+        mock_client.responses.create.return_value = MagicMock(output_text="")
+
+        with pytest.raises(ValueError, match="did not contain text content"):
+            OpenAIAgent().generate("prompt", "https://example.com/img.jpg")
+
+
+# ---------------------------------------------------------------------------
 # Agent manager
 # ---------------------------------------------------------------------------
 
@@ -171,9 +226,13 @@ class TestAgentManager:
         agent = get_agent("gemini")
         assert isinstance(agent, GeminiAgent)
 
+    def test_get_openai_agent(self) -> None:
+        agent = get_agent("openai")
+        assert isinstance(agent, OpenAIAgent)
+
     def test_unknown_agent_raises(self) -> None:
         with pytest.raises(ValueError, match="Unknown extraction agent"):
-            get_agent("openai")
+            get_agent("nonexistent")
 
 
 # ---------------------------------------------------------------------------

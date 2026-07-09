@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from cc.songs.extraction.agents import AnthropicAgent, ExtractionAgent, GeminiAgent
+from cc.songs.extraction.agents import (
+    AnthropicAgent,
+    ExtractionAgent,
+    GeminiAgent,
+    OpenAIAgent,
+)
 from cc.songs.extraction.extractor import (
     ChordSheetExtractor,
     parse_extraction_response,
@@ -13,6 +18,7 @@ __all__ = [
     "ChordSheetExtractor",
     "ExtractionAgent",
     "GeminiAgent",
+    "OpenAIAgent",
     "get_agent",
     "parse_extraction_response",
 ]
