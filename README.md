@@ -87,4 +87,16 @@ The following details how to deploy this application.
 
 ```shell
 uv run python manage.py import_songs --file=cc.sql --user=jdavid.gaitan@gmail.com
+
+DATABASE_URL="dbstring" \
+  uv run python manage.py import_songs --file=cc.sql --user=jdavid.gaitan@gmail.com
+
+DATABASE_URL="dbstring" \
+  uv run python manage.py assign_song_lyrics --file=cc.sql --user=jdavid.gaitan@gmail.com --limit=3
+
+DATABASE_URL="dbstring" \
+  uv run python manage.py assign_song_lyrics --file=cc.sql --user=jdavid.gaitan@gmail.com --agent=gemini
+
+DATABASE_URL="dbstring" \
+  uv run celery -A config worker -l info
 ```
